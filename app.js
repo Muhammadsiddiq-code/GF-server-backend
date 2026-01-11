@@ -315,12 +315,17 @@ sequelize
   .then(() => {
     console.log("✅ Database ulandi");
 
+  //   app.listen(PORT, "0.0.0.0", () => {
+  //     console.log(
+  //       `🚀 API running: https://scenic-noncomprehendible-garrison.ngrok-free.dev`
+  //     );
+  //   });
+    // })
+    
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(
-        `🚀 API running: https://scenic-noncomprehendible-garrison.ngrok-free.dev`
-      );
-    });
-  })
+  console.log(`🚀 API running on port: ${PORT}`);
+  console.log(`🔗 Swagger UI: https://gf-server-backend-1.onrender.com/swagger`);
+});
   .catch((err) => {
     console.error("❌ DB error:", err);
   });
