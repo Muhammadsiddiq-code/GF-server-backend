@@ -269,16 +269,33 @@ app.set("trust proxy", true);
 
 // Middlewares
 app.use(express.json());
+// app.use(
+//   cors({
+//     origin: "*",
+//     methods: ["GET", "POST", "PUT", "DELETE"],
+//     // 'ngrok-skip-browser-warning' headerini ruxsat etilganlar ro'yxatiga qo'shing
+//     allowedHeaders: [
+//       "Content-Type",
+//       "Authorization",
+//       "ngrok-skip-browser-warning",
+//     ],
+//   })
+// );
+
+
+
 app.use(
   cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    // 'ngrok-skip-browser-warning' headerini ruxsat etilganlar ro'yxatiga qo'shing
+    origin: "*", // Yoki [ "https://gf-server-backend-1.onrender.com", "http://localhost:3000" ]
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
       "Content-Type",
       "Authorization",
+      "X-Requested-With",
+      "Accept",
       "ngrok-skip-browser-warning",
     ],
+    credentials: true,
   })
 );
 

@@ -32,6 +32,24 @@
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
 
+// const options = {
+//   definition: {
+//     openapi: "3.0.0",
+//     info: {
+//       title: "Football App API",
+//       version: "1.0.0",
+//       description: "Football booking backend API",
+//     },
+//     servers: [
+//       {
+//         url: "https://scenic-noncomprehendible-garrison.ngrok-free.dev",
+//       },
+//     ],
+//   },
+//   apis: ["./routes/*.js"],
+// };
+
+
 const options = {
   definition: {
     openapi: "3.0.0",
@@ -42,7 +60,8 @@ const options = {
     },
     servers: [
       {
-        url: "https://scenic-noncomprehendible-garrison.ngrok-free.dev",
+        // BU YERGA RENDER'DAN OLGAN URL MANZILINGIZNI QO'YING
+        url: "https://gf-server-backend-1.onrender.com",
       },
     ],
   },
