@@ -304,7 +304,7 @@ app.options("*", cors());
 app.use("/api/swiper", swiperRoutes);
 app.use("/api/games", gameRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/user-games", userGameRoutes);
+app.use("/api/user-game", userGameRoutes);
 app.use("/api/paynet", paynetRoutes);
 
 // Swagger
