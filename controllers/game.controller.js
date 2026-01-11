@@ -85,16 +85,13 @@ const formatDateForFrontend = (game) => {
 
 // Games controller namunasi
 exports.getAllGames = async (req, res) => {
-  try {
-    const games = await Game.findAll(); // Game modelini chaqirishda xato yo'qligini tekshiring
-    res.status(200).json(games);
-  } catch (error) {
-    console.error("DETALNIY XATO:", error); // BU RENDER LOGLARIDA KO'RINADI
-    res.status(500).json({ 
-        message: "Server ichki xatosi", 
-        error: error.message 
-    });
-  }
+try {
+  const games = await Game.findAll();
+  res.json(games);
+} catch (err) {
+  console.error(err); // Bu log Render terminalida ko'rinadi
+  res.status(500).json({ error: err.message }); // Endi Swagger'da xato sababi ko'rinadi
+}
 };
 
 // 2. Bitta o'yinni olish
