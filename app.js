@@ -284,16 +284,22 @@ app.use(express.json());
 
 
 
+// app.use(
+//   cors({
+//     origin: "*",
+//     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+//     allowedHeaders: [
+//       "Content-Type",
+//       "Authorization",
+//       "ngrok-skip-browser-warning",
+//     ],
+//     credentials: true,
+//   })
+// );
+
 app.use(
   cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "ngrok-skip-browser-warning",
-    ],
-    credentials: true,
+    origin: "*", // Hozircha hamma joydan ruxsat berib turish eng oson yo'li
   })
 );
 
