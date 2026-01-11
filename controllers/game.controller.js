@@ -62,23 +62,38 @@ const formatDateForFrontend = (game) => {
 //   }
 // };
 
+// exports.getAllGames = async (req, res) => {
+//   try {
+//     const limit = req.query.limit ? parseInt(req.query.limit) : null;
+
+//     const options = {
+//       order: [["playDate", "ASC"]], // Eng yaqin o'yinlar har doim tepada
+//     };
+
+//     if (limit) {
+//       options.limit = limit; // Agar limit bo'lsa (masalan 4), faqat 4 ta oladi
+//     }
+
+//     const games = await Game.findAll(options);
+//     const formattedGames = games.map(formatDateForFrontend);
+//     res.json(formattedGames);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+
+// Games controller namunasi
 exports.getAllGames = async (req, res) => {
   try {
-    const limit = req.query.limit ? parseInt(req.query.limit) : null;
-
-    const options = {
-      order: [["playDate", "ASC"]], // Eng yaqin o'yinlar har doim tepada
-    };
-
-    if (limit) {
-      options.limit = limit; // Agar limit bo'lsa (masalan 4), faqat 4 ta oladi
-    }
-
-    const games = await Game.findAll(options);
-    const formattedGames = games.map(formatDateForFrontend);
-    res.json(formattedGames);
+    const games = await Game.findAll(); // Game modelini chaqirishda xato yo'qligini tekshiring
+    res.status(200).json(games);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("DETALNIY XATO:", error); // BU RENDER LOGLARIDA KO'RINADI
+    res.status(500).json({ 
+        message: "Server ichki xatosi", 
+        error: error.message 
+    });
   }
 };
 
