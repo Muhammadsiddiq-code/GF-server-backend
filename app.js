@@ -286,18 +286,19 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: "*", // Yoki [ "https://gf-server-backend-1.onrender.com", "http://localhost:3000" ]
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
       "Content-Type",
       "Authorization",
-      "X-Requested-With",
-      "Accept",
       "ngrok-skip-browser-warning",
     ],
     credentials: true,
   })
 );
+
+// Bu qator Swagger so'rovlari uchun juda muhim
+app.options("*", cors());
 
 // Routes
 app.use("/api/swiper", swiperRoutes);
@@ -315,17 +316,13 @@ sequelize
   .then(() => {
     console.log("✅ Database ulandi");
 
-  //   app.listen(PORT, "0.0.0.0", () => {
-  //     console.log(
-  //       `🚀 API running: https://scenic-noncomprehendible-garrison.ngrok-free.dev`
-  //     );
-  //   });
-    // })
-    
-    app.listen(PORT, "0.0.0.0", () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 API running on port: ${PORT}`);
-  console.log(`🔗 Swagger UI: https://gf-server-backend-1.onrender.com/swagger`);
+  console.log(
+    `🔗 Swagger UI: https://gf-server-backend-1.onrender.com/swagger`
+  );
 });
+  })
   .catch((err) => {
     console.error("❌ DB error:", err);
   });

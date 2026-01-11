@@ -60,7 +60,7 @@ const options = {
     },
     servers: [
       {
-        // BU YERGA RENDER'DAN OLGAN URL MANZILINGIZNI QO'YING
+        // Oxirida "/" belgisi bo'lmasligiga e'tibor bering
         url: "https://gf-server-backend-1.onrender.com",
       },
     ],
