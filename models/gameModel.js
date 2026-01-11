@@ -96,14 +96,18 @@
 
 
 
-
-
-
-
 module.exports = (sequelize, DataTypes) => {
+  // Bu funksiya bo'lishi shart!
   const Game = sequelize.define("Game", {
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    title: { type: DataTypes.STRING, allowNull: false },
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     subtitle: { type: DataTypes.STRING },
     location: { type: DataTypes.STRING, allowNull: false },
     playDate: { type: DataTypes.DATE, allowNull: false },
@@ -122,7 +126,11 @@ module.exports = (sequelize, DataTypes) => {
     scoreTeamA: { type: DataTypes.INTEGER, defaultValue: 0 },
     scoreTeamB: { type: DataTypes.INTEGER, defaultValue: 0 },
     isFinished: { type: DataTypes.BOOLEAN, defaultValue: false },
-    mvpPlayer: { type: DataTypes.STRING, allowNull: true },
+    mvpPlayer: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   });
-  return Game;
+
+  return Game; // Modelni qaytarish shart
 };
