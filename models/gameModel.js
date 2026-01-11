@@ -69,6 +69,24 @@ const Game = sequelize.define("Game", {
     type: DataTypes.ARRAY(DataTypes.STRING), // PostgreSQL array
     defaultValue: [],
   },
+
+  // yangi qoshilganlar
+  scoreTeamA: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0, // O'yin boshlanmagan bo'lsa 0
+  },
+  scoreTeamB: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+  },
+  isFinished: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false, // O'yin tugaganini bildiradi
+  },
+  mvpPlayer: {
+    type: DataTypes.STRING, // MVP o'yinchi ismi
+    allowNull: true,
+  },
 });
 
 module.exports = Game;

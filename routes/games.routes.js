@@ -6,7 +6,7 @@ const gameController = require("../controllers/game.controller");
  * @swagger
  * tags:
  *   - name: Games
- *     description: Futbol o‘yinlari API
+ *     description: games.jsx dagi bolim
  */
 
 /**
@@ -115,6 +115,25 @@ const gameController = require("../controllers/game.controller");
  *             type: string
  */
 
+
+/**
+ * @swagger
+ * /api/games:
+ *   post:
+ *     summary: Yangi o‘yin yaratish
+ *     tags: [Games]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/GameInput'
+ *     responses:
+ *       201:
+ *         description: O‘yin yaratildi
+ */
+router.post("/", gameController.createGame);
+
 /**
  * @swagger
  * /api/games:
@@ -155,23 +174,7 @@ router.get("/", gameController.getAllGames);
  */
 router.get("/:id", gameController.getGameById);
 
-/**
- * @swagger
- * /api/games:
- *   post:
- *     summary: Yangi o‘yin yaratish
- *     tags: [Games]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/GameInput'
- *     responses:
- *       201:
- *         description: O‘yin yaratildi
- */
-router.post("/", gameController.createGame);
+
 
 /**
  * @swagger

@@ -1,122 +1,168 @@
-const express = require("express");
-const dotenv = require("dotenv");
-const cors = require("cors");
-const { sequelize } = require("./models");
-const setupSwagger = require("./swagger/swagger");
-const swiper = require("./routes/swiper.routes");
-const gameRoutes = require("./routes/games.routes");
-const bodyParser = require("body-parser");
+// const express = require("express");
+// const dotenv = require("dotenv");
+// const cors = require("cors");
+// const { sequelize, Game, UserGame } = require("./models"); // Modellarni chaqiramiz
+// const setupSwagger = require("./swagger/swagger");
+// const swiper = require("./routes/swiper.routes");
+// const gameRoutes = require("./routes/games.routes");
+// const userRoutes = require("./routes/user.routes"); // User route qo'shildi
+// const userGameRoutes = require("./routes/userGame.routes");
+// const bodyParser = require("body-parser");
+// const paynetRoutes = require("./routes/paynet.routes");
 
 
-dotenv.config();
+// dotenv.config();
 
-const app = express();
-const PORT = process.env.PORT || 5577;
+// const app = express();
+// const PORT = process.env.PORT || 5577;
 
-app.use(express.json());
-app.use(cors({ origin: "*" }));
+// app.use(express.json());
+// app.use(cors({ origin: "*" }));
+// app.use(bodyParser.json());
 
-app.use("/api", swiper);
-app.use("/api/games", gameRoutes);
-
-
-
-
-app.use(bodyParser.json());
-
-// Payme dan keladigan so'rovlarni autentifikatsiya qilish (Base64 login/parol)
-const PAYME_AUTH = "Paycom:YOUR_PAYME_KEY"; // Payme cabinet'dan olasiz
-
-app.post("/api/payme", (req, res) => {
-  const { method, params, id } = req.body;
-  const authHeader = req.headers.authorization;
-
-  // 1. Avtorizatsiyani tekshirish
-  if (
-    !authHeader ||
-    authHeader !== `Basic ${Buffer.from(PAYME_AUTH).toString("base64")}`
-  ) {
-    return res.json({
-      error: { code: -32504, message: "Avtorizatsiya xatosi" },
-      id,
-    });
-  }
-
-  // 2. Metodlarni boshqarish
-  switch (method) {
-    case "CheckPerformTransaction":
-      // O'yin borligini va narxi to'g'riligini tekshirish
-      const amount = params.amount / 100; // Tiyindan so'mga
-      const gameId = params.account.game_id;
-
-      // Bu yerda bazadan o'yinni tekshirasiz
-      if (gameId) {
-        return res.json({ result: { allow: true }, id });
-      } else {
-        return res.json({
-          error: { code: -31050, message: "O'yin topilmadi" },
-          id,
-        });
-      }
-
-    case "CreateTransaction":
-      // To'lovni yaratish va bazaga "pending" holatda saqlash
-      return res.json({
-        result: {
-          create_time: Date.now(),
-          transaction: params.id,
-          state: 1,
-        },
-        id,
-      });
-
-    case "PerformTransaction":
-      // To'lov muvaffaqiyatli bo'ldi!
-      // Shu yerda foydalanuvchini o'yinga qo'shish kodini yozasiz
-      console.log("To'lov muvaffaqiyatli! Game ID:", params.id);
-      return res.json({
-        result: {
-          transaction: params.id,
-          perform_time: Date.now(),
-          state: 2,
-        },
-        id,
-      });
-
-    case "CheckTransaction":
-      return res.json({
-        result: {
-          create_time: Date.now(),
-          perform_time: Date.now(),
-          cancel_time: 0,
-          transaction: params.id,
-          state: 2,
-          reason: null,
-        },
-        id,
-      });
-
-    default:
-      return res.json({
-        error: { code: -32601, message: "Metod topilmadi" },
-        id,
-      });
-  }
-});
+// // API yo'nalishlari
+// app.use("/api", swiper);
+// app.use("/api/games", gameRoutes);
+// app.use("/api/users", userRoutes);
+// app.use("/api/user-games", userGameRoutes);
+// app.use("/api/paynet", paynetRoutes);
 
 
+// // Payme sozlamalari
+// const PAYME_AUTH = process.env.PAYME_KEY || "Paycom:YOUR_KEY_HERE";
 
-setupSwagger(app);
+// app.post("/api/payme", async (req, res) => {
+//   const { method, params, id } = req.body;
+//   const authHeader = req.headers.authorization;
 
-sequelize
-  .sync()
-  .then(() => {
-    console.log(" Database ulandi");
-    app.listen(PORT, () => {
-      console.log(` Server running at http://localhost:${PORT}/swagger`);
-    });
-  })
-  .catch((err) => console.error(" DB xatosi:", err));
+//   // 1. Avtorizatsiyani tekshirish
+//   if (
+//     !authHeader ||
+//     authHeader !== `Basic ${Buffer.from(PAYME_AUTH).toString("base64")}`
+//   ) {
+//     return res.json({
+//       error: { code: -32504, message: "Avtorizatsiya xatosi" },
+//       id,
+//     });
+//   }
+
+//   try {
+//     switch (method) {
+//       case "CheckPerformTransaction": {
+//         const gameId = params.account.game_id;
+//         const amount = params.amount / 100;
+
+//         const game = await Game.findByPk(gameId);
+//         if (!game) {
+//           return res.json({
+//             error: { code: -31050, message: "O'yin topilmadi" },
+//             id,
+//           });
+//         }
+
+//         if (game.price !== amount) {
+//           return res.json({
+//             error: { code: -31001, message: "Noto'g'ri summa" },
+//             id,
+//           });
+//         }
+
+//         if (game.playersJoined >= game.totalPlayers) {
+//           return res.json({
+//             error: { code: -31099, message: "Joy qolmagan" },
+//             id,
+//           });
+//         }
+
+//         return res.json({ result: { allow: true }, id });
+//       }
+
+//       case "CreateTransaction": {
+//         // Bu yerda tranzaksiyani bazada saqlash kerak (ixtiyoriy lekin tavsiya etiladi)
+//         return res.json({
+//           result: {
+//             create_time: Date.now(),
+//             transaction: params.id,
+//             state: 1,
+//           },
+//           id,
+//         });
+//       }
+
+//       case "PerformTransaction": {
+//         const gameId = params.account.game_id;
+//         const userId = params.account.user_id; // Frontenddan yuborilgan user_id
+
+//         // FOYDALANUVCHINI O'YINGA QO'SHISH
+//         const game = await Game.findByPk(gameId);
+
+//         // Takroran qo'shilmaganini tekshirish
+//         const alreadyJoined = await UserGame.findOne({
+//           where: { gameId, userId },
+//         });
+
+//         if (!alreadyJoined) {
+//           await UserGame.create({
+//             gameId,
+//             userId,
+//             team: "A", // Default jamoa
+//           });
+//           await game.increment("playersJoined");
+//         }
+
+//         return res.json({
+//           result: {
+//             transaction: params.id,
+//             perform_time: Date.now(),
+//             state: 2,
+//           },
+//           id,
+//         });
+//       }
+
+//       case "CheckTransaction": {
+//         return res.json({
+//           result: {
+//             create_time: Date.now(),
+//             perform_time: Date.now(),
+//             cancel_time: 0,
+//             transaction: params.id,
+//             state: 2,
+//             reason: null,
+//           },
+//           id,
+//         });
+//       }
+
+//       default:
+//         return res.json({
+//           error: { code: -32601, message: "Metod topilmadi" },
+//           id,
+//         });
+//     }
+//   } catch (err) {
+//     return res.json({
+//       error: { code: -32400, message: "Tizim xatosi: " + err.message },
+//       id,
+//     });
+//   }
+// });
+
+// // Swagger
+// setupSwagger(app);
+
+// // Bazaga ulanish
+// sequelize
+//   .sync({ alter: true }) // Modeldagi o'zgarishlarni bazada yangilaydi
+//   .then(() => {
+//     console.log("✅ Database ulandi va sinxronizatsiya qilindi");
+//     app.listen(PORT, () => {
+//       console.log(`🚀 Server running at http://localhost:${PORT}`);
+//     });
+//   })
+//   .catch((err) => console.error("❌ DB xatosi:", err));
+
+
 
 
 
@@ -135,89 +181,129 @@ sequelize
 
 
 // const express = require("express");
+// const dotenv = require("dotenv");
+// const cors = require("cors");
 // const bodyParser = require("body-parser");
+
+// const { sequelize } = require("./models");
+// const setupSwagger = require("./swagger/swagger");
+
+// const swiper = require("./routes/swiper.routes");
+// const gameRoutes = require("./routes/games.routes");
+// const userRoutes = require("./routes/user.routes");
+// const userGameRoutes = require("./routes/userGame.routes");
+// const paynetRoutes = require("./routes/paynet.routes");
+
+// dotenv.config();
+
 // const app = express();
+// const PORT = process.env.PORT || 5577;
 
+// // Middlewares
+// app.use(express.json());
 // app.use(bodyParser.json());
+// app.use(cors({ origin: "*" }));
 
-// // Payme dan keladigan so'rovlarni autentifikatsiya qilish (Base64 login/parol)
-// const PAYME_AUTH = "Paycom:YOUR_PAYME_KEY"; // Payme cabinet'dan olasiz
+// // Routes
+// app.use("/api/swiper", swiper);
+// app.use("/api/games", gameRoutes);
+// app.use("/api/users", userRoutes);
+// app.use("/api/user-games", userGameRoutes);
+// app.use("/api/paynet", paynetRoutes);
 
-// app.post("/api/payme", (req, res) => {
-//   const { method, params, id } = req.body;
-//   const authHeader = req.headers.authorization;
+// // Swagger
+// setupSwagger(app);
 
-//   // 1. Avtorizatsiyani tekshirish
-//   if (
-//     !authHeader ||
-//     authHeader !== `Basic ${Buffer.from(PAYME_AUTH).toString("base64")}`
-//   ) {
-//     return res.json({
-//       error: { code: -32504, message: "Avtorizatsiya xatosi" },
-//       id,
+// // Database + Server
+// sequelize
+//   .sync({ alter: true })
+//   .then(() => {
+//     console.log("✅ Database ulandi va sinxronizatsiya qilindi");
+
+//     app.listen(PORT, "0.0.0.0", () => {
+//       // console.log(`🚀 Server running on http://localhost:${PORT}/swagger`);
+//     console.log(
+//       `service is running https://scenic-noncomprehendible-garrison.ngrok-free.dev/swagger`
+//     );
 //     });
-//   }
+//   })
+//   .catch((err) => {
+//     console.error("❌ DB xatosi:", err);
+//   });
 
-//   // 2. Metodlarni boshqarish
-//   switch (method) {
-//     case "CheckPerformTransaction":
-//       // O'yin borligini va narxi to'g'riligini tekshirish
-//       const amount = params.amount / 100; // Tiyindan so'mga
-//       const gameId = params.account.game_id;
 
-//       // Bu yerda bazadan o'yinni tekshirasiz
-//       if (gameId) {
-//         return res.json({ result: { allow: true }, id });
-//       } else {
-//         return res.json({
-//           error: { code: -31050, message: "O'yin topilmadi" },
-//           id,
-//         });
-//       }
 
-//     case "CreateTransaction":
-//       // To'lovni yaratish va bazaga "pending" holatda saqlash
-//       return res.json({
-//         result: {
-//           create_time: Date.now(),
-//           transaction: params.id,
-//           state: 1,
-//         },
-//         id,
-//       });
 
-//     case "PerformTransaction":
-//       // To'lov muvaffaqiyatli bo'ldi!
-//       // Shu yerda foydalanuvchini o'yinga qo'shish kodini yozasiz
-//       console.log("To'lov muvaffaqiyatli! Game ID:", params.id);
-//       return res.json({
-//         result: {
-//           transaction: params.id,
-//           perform_time: Date.now(),
-//           state: 2,
-//         },
-//         id,
-//       });
 
-//     case "CheckTransaction":
-//       return res.json({
-//         result: {
-//           create_time: Date.now(),
-//           perform_time: Date.now(),
-//           cancel_time: 0,
-//           transaction: params.id,
-//           state: 2,
-//           reason: null,
-//         },
-//         id,
-//       });
 
-//     default:
-//       return res.json({
-//         error: { code: -32601, message: "Metod topilmadi" },
-//         id,
-//       });
-//   }
-// });
 
-// app.listen(5577, () => console.log("Backend 5577-portda ishlamoqda..."));
+
+
+
+
+
+
+
+
+
+const express = require("express");
+const dotenv = require("dotenv");
+const cors = require("cors");
+
+const { sequelize } = require("./models");
+const setupSwagger = require("./swagger/swagger");
+
+const swiperRoutes = require("./routes/swiper.routes");
+const gameRoutes = require("./routes/games.routes");
+const userRoutes = require("./routes/user.routes");
+const userGameRoutes = require("./routes/userGame.routes");
+const paynetRoutes = require("./routes/paynet.routes");
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 5577;
+
+// NGROK uchun
+app.set("trust proxy", true);
+
+// Middlewares
+app.use(express.json());
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    // 'ngrok-skip-browser-warning' headerini ruxsat etilganlar ro'yxatiga qo'shing
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "ngrok-skip-browser-warning",
+    ],
+  })
+);
+
+// Routes
+app.use("/api/swiper", swiperRoutes);
+app.use("/api/games", gameRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/user-games", userGameRoutes);
+app.use("/api/paynet", paynetRoutes);
+
+// Swagger
+setupSwagger(app);
+
+// DB + Server
+sequelize
+  .sync({ alter: true })
+  .then(() => {
+    console.log("✅ Database ulandi");
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(
+        `🚀 API running: https://scenic-noncomprehendible-garrison.ngrok-free.dev`
+      );
+    });
+  })
+  .catch((err) => {
+    console.error("❌ DB error:", err);
+  });

@@ -6,7 +6,7 @@ const swiper = require("../controllers/swiper.controller");
  * @swagger
  * tags:
  *   name: Swiper
- *   description: Asosiy sahifada chiqadigan swiper
+ *   description: Home.jsx dagi swiper
  */
 
 /**
@@ -35,7 +35,7 @@ const swiper = require("../controllers/swiper.controller");
  *       500:
  *         description: Server error
  */
-router.post("/swiper", swiper.createSwiper);
+router.post("/", swiper.createSwiper);
 
 /**
  * @swagger
@@ -49,7 +49,7 @@ router.post("/swiper", swiper.createSwiper);
  *       500:
  *         description: Server error
  */
-router.get("/swiper", swiper.getSwipers);
+router.get("/", swiper.getSwipers);
 
 /**
  * @swagger
@@ -72,7 +72,7 @@ router.get("/swiper", swiper.getSwipers);
  *       500:
  *         description: Server error
  */
-router.get("/swiper/:id", swiper.getSwiperById);
+router.get("/:id", swiper.getSwiperById);
 
 /**
  * @swagger
@@ -95,6 +95,6 @@ router.get("/swiper/:id", swiper.getSwiperById);
  *       500:
  *         description: Server error
  */
-router.delete("/swiper/:id", swiper.deleteSwiper);
+router.delete("/:id", swiper.deleteSwiper);
 
 module.exports = router;
