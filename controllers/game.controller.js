@@ -90,7 +90,7 @@ try {
   res.json(games);
 } catch (err) {
   console.error(err); // Bu log Render terminalida ko'rinadi
-  res.status(500).json({ error: err.message }); // Endi Swagger'da xato sababi ko'rinadi
+  res.status(500).json({ message: "Server xatosi", error: err.message });
 }
 };
 
