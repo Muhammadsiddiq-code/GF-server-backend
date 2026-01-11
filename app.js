@@ -262,7 +262,7 @@ const paynetRoutes = require("./routes/paynet.routes");
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5577;
+const PORT = process.env.PORT || 8080;
 
 // NGROK uchun
 app.set("trust proxy", true);
@@ -311,17 +311,17 @@ app.use("/api/paynet", paynetRoutes);
 setupSwagger(app);
 
 // DB + Server
+// app.js ning oxirgi qismini shunday o'zgartiring:
 sequelize
   .sync({ alter: true })
   .then(() => {
     console.log("✅ Database ulandi");
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 API running on port: ${PORT}`);
-  console.log(
-    `🔗 Swagger UI: https://gf-server-backend-1.onrender.com/swagger`
-  );
-});
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 API running on port: ${PORT}`);
+      // Railway bergan domen bormi yoki yo'qligini tekshirib chiqaradi
+      const domain = process.env.RAILWAY_PUBLIC_DOMAIN || "localhost:8080";
+      console.log(`🔗 Swagger UI: https://${domain}/swagger`);
+    });
   })
   .catch((err) => {
     console.error("❌ DB error:", err);

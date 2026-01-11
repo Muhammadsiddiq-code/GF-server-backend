@@ -60,8 +60,8 @@ const options = {
     },
     servers: [
       {
-        // Oxirida "/" belgisi bo'lmasligiga e'tibor bering
-        url: "https://gf-server-backend-1.onrender.com",
+        url: "https://gf-server-backend-production.up.railway.app", // Yangi Railway URL
+        description: "Railway Server",
       },
     ],
   },

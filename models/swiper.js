@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-  const swiper = sequelize.define("swiper", {
+  const Swiper = sequelize.define("Swiper", {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
@@ -10,5 +10,5 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
   });
-  return swiper;
+  return Swiper;
 };
