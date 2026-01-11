@@ -32,26 +32,24 @@
 require("dotenv").config();
 const { Sequelize, DataTypes } = require("sequelize");
 
-const databaseUrl = process.env.DATABASE_URL;
-
-const sequelize = new Sequelize(databaseUrl, {
+const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: "postgres",
   logging: false,
   dialectOptions: {
     ssl: {
       require: true,
-      rejectUnauthorized: false, // Railway uchun bu juda muhim!
+      rejectUnauthorized: false,
     },
   },
 });
 
-// Modellarni ishga tushirish (Shunday yozilishi shart)
+// Modellarni chaqirish (Endi xato bermaydi!)
 const User = require("./userModel")(sequelize, DataTypes);
 const Game = require("./gameModel")(sequelize, DataTypes);
 const UserGame = require("./UserGame")(sequelize, DataTypes);
 const Swiper = require("./swiper")(sequelize, DataTypes);
 
-// MUNOSABATLAR
+// MUNOSABATLAR (RELATIONSHIPS)
 User.belongsToMany(Game, {
   through: UserGame,
   foreignKey: "userId",
