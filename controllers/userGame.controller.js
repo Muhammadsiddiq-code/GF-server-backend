@@ -87,30 +87,39 @@
 
 
 
-const { UserGame, Game } = require("../models");
+
+const { UserGame, Game, User } = require("../models"); // User modelini qo'shdik
 const { Op } = require("sequelize");
 
-// 1. O'yinga qo'shilish
 exports.joinGame = async (req, res) => {
   try {
-    const { gameId, userId, team } = req.body;
+    const { gameId, userId, team } = req.body; // userId bu yerda bazadagi ID
 
-    // O'yin mavjudligini tekshirish
+    // 1. O'yin mavjudligini va joy borligini tekshirish
     const game = await Game.findByPk(gameId);
     if (!game) return res.status(404).json({ message: "O'yin topilmadi" });
 
-    // Joy borligini tekshirish
     if (game.playersJoined >= game.totalPlayers) {
       return res.status(400).json({ message: "Barcha joylar band" });
     }
 
-    // UserGame ga yozish
+    // 2. UserGame ga yozish (O'yinga qo'shish)
     const newJoin = await UserGame.create({ gameId, userId, team });
 
-    // O'yinda odamlar sonini 1 taga oshirish
+    // 3. O'yinda odamlar sonini 1 taga oshirish
     await game.increment("playersJoined");
 
-    res.status(201).json(newJoin);
+    // 4. XP QO'SHISH (Siz aytgan 3000 XP)
+    const user = await User.findByPk(userId);
+    if (user) {
+      await user.increment("xp", { by: 3000 });
+    }
+
+    res.status(201).json({
+      message: "O'yinga muvaffaqiyatli qo'shildingiz va 3000 XP berildi!",
+      data: newJoin,
+      currentXp: user ? user.xp + 3000 : 0,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
