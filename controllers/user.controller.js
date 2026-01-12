@@ -71,43 +71,18 @@
 
 
 
-// controllers/user.controller.js
-// const db = require("../models"); // models/index.js ni chaqiradi
-// const User = db.User; // Aniq User modelini oladi
+const db = require("../models");
+const User = db.User;
 
-// exports.getAllUsers = async (req, res) => {
-//   try {
-//     // Diagnostika: Agar User modeli bo'lmasa, consolega chiqaramiz
-//     if (!User) {
-//       console.error("KRITIK XATO: User modeli yuklanmadi!");
-//       return res.status(500).json({ error: "Server ichki xatosi: Database Model Error" });
-//     }
-
-//     const users = await User.findAll({
-//       order: [['xp', 'DESC']]
-//     });
-
-//     res.json(users);
-//   } catch (error) {
-//     console.error("findAll xatosi:", error);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
-const db = require("../models"); // index.js ni chaqiradi
-const User = db.User; // db ichidan User modelini sug'urib oladi
-
+// 1. All Users
 exports.getAllUsers = async (req, res) => {
   try {
-    // Diagnostika uchun: User modeli yuklanganini tekshiramiz
     if (!User) {
       return res.status(500).json({ error: "User modeli undefined!" });
     }
-
     const users = await User.findAll({
       order: [["xp", "DESC"]],
     });
-
     res.json(users);
   } catch (error) {
     console.error("HATO:", error.message);
@@ -115,34 +90,31 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// Login funksiyasi ham shu faylda bo'lsa, u ham db.User ishlatsin
+// 2. Login or Register
 exports.loginOrRegister = async (req, res) => {
   try {
     const { telegramId, firstName, lastName, username } = req.body;
 
-    // Telegram ID kelmasa xato qaytaramiz
     if (!telegramId) {
       return res.status(400).json({ message: "Telegram ID yetishmayapti" });
     }
 
-    // Bazadan qidiramiz
     let user = await User.findOne({ where: { telegramId } });
 
     if (!user) {
-      // Agar yo'q bo'lsa - yangi yaratamiz
       user = await User.create({
         telegramId,
         firstName,
         lastName,
         username,
-        xp: 500, // Boshlang'ich bonus
+        xp: 500,
       });
       return res.status(201).json({ message: "Ro'yxatdan o'tildi", user });
     }
 
-    // Agar bor bo'lsa - shunchaki qaytaramiz
     res.json({ message: "Login muvaffaqiyatli", user });
   } catch (error) {
     console.error("Login Error:", error);
     res.status(500).json({ error: error.message });
-  }};
+  }
+};
