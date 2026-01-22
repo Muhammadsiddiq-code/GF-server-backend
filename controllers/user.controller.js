@@ -70,33 +70,17 @@
 const db = require("../models");
 const User = db.User;
 
-// 1. All Users
-exports.getAllUsers = async (req, res) => {
-  try {
-    const users = await User.findAll({
-      order: [["xp", "DESC"]],
-    });
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// 2. Login or Register
+// Login or Register
 exports.loginOrRegister = async (req, res) => {
   try {
-    // Log qilib ko'ramiz, rasm kelyaptimi?
-    console.log("Login Request Body:", req.body);
-
+    // start_param ni qabul qilamiz (Frontendan keladi)
     const {
       telegramId,
       firstName,
       lastName,
       username,
-      phone,
-      city,
-      position,
-      photo_url, // Frontdan shu nom bilan kelishi kerak
+      photo_url,
+      start_param, // <-- SHU NARSA Referral ID bo'ladi
     } = req.body;
 
     if (!telegramId) {
@@ -106,40 +90,67 @@ exports.loginOrRegister = async (req, res) => {
     const strId = String(telegramId);
     let user = await User.findOne({ where: { telegramId: strId } });
 
-    if (!user) {
-      // --- YANGI USER ---
-      console.log("Yangi user yaratilmoqda, Rasm:", photo_url);
+    // Agar User OLDIN BOR BO'LSA (Login)
+    if (user) {
+      // Ma'lumotlarni yangilaymiz (lekin XP bermaymiz)
+      const updatedFields = {};
+      if (firstName) updatedFields.firstName = firstName;
+      if (lastName) updatedFields.lastName = lastName;
+      if (username) updatedFields.username = username;
+      if (photo_url) updatedFields.photo = photo_url;
+      await user.update(updatedFields);
+
+      return res.json({ message: "Login muvaffaqiyatli", user });
+    }
+
+    // Agar User YANGI BO'LSA (Register)
+    else {
+      // 1. Yangi userni yaratamiz
       user = await User.create({
         telegramId: strId,
         firstName,
         lastName,
         username,
-        photo: photo_url, // Rasmni saqlash
-        phone,
-        city,
-        position,
-        xp: 500,
+        photo: photo_url,
+        invitedBy: start_param || null, // Kim taklif qilganini yozib qo'yamiz
+        xp: 500, // Boshlang'ich bonus
       });
+
+      // 2. REFERRAL LOGIKASI (1000 XP berish)
+      // Agar start_param bor bo'lsa VA o'zini o'zi taklif qilmagan bo'lsa
+      if (start_param && start_param !== strId) {
+        const inviter = await User.findOne({
+          where: { telegramId: start_param },
+        });
+
+        if (inviter) {
+          // Taklif qilgan odamga 1000 XP qo'shamiz
+          await inviter.increment("xp", { by: 1000 });
+          console.log(
+            `REFERRAL: ${inviter.firstName} ga 1000 XP berildi (yangi user: ${firstName})`
+          );
+        }
+      }
+
       return res.status(201).json({ message: "Ro'yxatdan o'tildi", user });
-    } else {
-      // --- UPDATE ---
-      console.log("User yangilanmoqda. Yangi rasm:", photo_url);
-
-      const updatedFields = {};
-      // Faqat qiymat bor bo'lsa yangilaymiz
-      if (firstName) updatedFields.firstName = firstName;
-      if (lastName) updatedFields.lastName = lastName;
-      if (username) updatedFields.username = username;
-      if (photo_url) updatedFields.photo = photo_url; // <--- Rasm yangilanishi
-      if (phone) updatedFields.phone = phone;
-      if (city) updatedFields.city = city;
-      if (position) updatedFields.position = position;
-
-      await user.update(updatedFields);
-      return res.json({ message: "Ma'lumotlar yangilandi", user });
     }
   } catch (error) {
     console.error("Login Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
+
+// 1. All Users
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.findAll({
+      order: [["xp", "DESC"]],
+    });
+    res.json(users);
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
