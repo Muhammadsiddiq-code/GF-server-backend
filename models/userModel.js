@@ -39,11 +39,18 @@
 
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define("users", {
-    telegramId: {
-      type: DataTypes.STRING, // BIGINT o'rniga STRING ishlatamiz (Xavfsizroq)
+    // 1. Eski ID ni qaytaramiz (Baza buzilmasligi uchun)
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
       allowNull: false,
-      unique: true,
-      primaryKey: true, // Qidirish tezroq bo'lishi uchun
+    },
+    // 2. Telegram ID ni STRING va UNIQUE qilamiz
+    telegramId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true, // Primary Key emas, lekin takrorlanmas bo'ladi
     },
     firstName: {
       type: DataTypes.STRING,
@@ -54,7 +61,6 @@ module.exports = (sequelize, DataTypes) => {
     username: {
       type: DataTypes.STRING,
     },
-    // YANGI QO'SHILGAN MAYDONLAR:
     phone: {
       type: DataTypes.STRING,
       defaultValue: "",
