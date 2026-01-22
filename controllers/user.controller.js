@@ -73,15 +73,19 @@ const User = db.User;
 // Login or Register
 exports.loginOrRegister = async (req, res) => {
   try {
-    // start_param ni qabul qilamiz (Frontendan keladi)
     const {
       telegramId,
       firstName,
       lastName,
       username,
       photo_url,
-      start_param, // <-- SHU NARSA Referral ID bo'ladi
+      start_param, // <-- Frontendan kelayotgan referral ID
     } = req.body;
+
+    console.log("------------------------------------------------");
+    console.log("LOGIN SO'ROVI KELDI:");
+    console.log("Kelgan User ID:", telegramId);
+    console.log("Kelgan Start Param (Referral):", start_param);
 
     if (!telegramId) {
       return res.status(400).json({ message: "Telegram ID yetishmayapti" });
@@ -90,56 +94,76 @@ exports.loginOrRegister = async (req, res) => {
     const strId = String(telegramId);
     let user = await User.findOne({ where: { telegramId: strId } });
 
-    // Agar User OLDIN BOR BO'LSA (Login)
+    // 1. AGAR USER MAVJUD BO'LSA (LOGIN)
     if (user) {
-      // Ma'lumotlarni yangilaymiz (lekin XP bermaymiz)
+      console.log("User allaqachon mavjud. Login qilinmoqda.");
+
       const updatedFields = {};
       if (firstName) updatedFields.firstName = firstName;
       if (lastName) updatedFields.lastName = lastName;
       if (username) updatedFields.username = username;
       if (photo_url) updatedFields.photo = photo_url;
-      await user.update(updatedFields);
 
+      await user.update(updatedFields);
       return res.json({ message: "Login muvaffaqiyatli", user });
     }
 
-    // Agar User YANGI BO'LSA (Register)
+    // 2. AGAR USER YANGI BO'LSA (REGISTER)
     else {
-      // 1. Yangi userni yaratamiz
+      console.log("Yangi user yaratilmoqda...");
+
+      // Userni yaratamiz
       user = await User.create({
         telegramId: strId,
         firstName,
         lastName,
         username,
         photo: photo_url,
-        invitedBy: start_param || null, // Kim taklif qilganini yozib qo'yamiz
+        invitedBy: start_param ? String(start_param) : null,
         xp: 500, // Boshlang'ich bonus
       });
 
-      // 2. REFERRAL LOGIKASI (1000 XP berish)
-      // Agar start_param bor bo'lsa VA o'zini o'zi taklif qilmagan bo'lsa
-      if (start_param && start_param !== strId) {
+      console.log("Yangi user bazaga yozildi.");
+
+      // --- REFERRAL LOGIKASI ---
+      // Agar start_param bo'lsa VA o'zi o'zini taklif qilmagan bo'lsa
+      if (start_param && String(start_param) !== strId) {
+        console.log("Referral tekshirilmoqda. Inviter ID:", start_param);
+
+        // Taklif qilgan odamni qidiramiz
         const inviter = await User.findOne({
-          where: { telegramId: start_param },
+          where: { telegramId: String(start_param) },
         });
 
         if (inviter) {
-          // Taklif qilgan odamga 1000 XP qo'shamiz
-          await inviter.increment("xp", { by: 1000 });
           console.log(
-            `REFERRAL: ${inviter.firstName} ga 1000 XP berildi (yangi user: ${firstName})`
+            `Taklif qilgan odam topildi: ${inviter.firstName} (${inviter.xp} XP)`
+          );
+
+          // XP ni yangilashning eng ishonchli yo'li:
+          const newXp = inviter.xp + 1000;
+          await inviter.update({ xp: newXp });
+
+          console.log(
+            `MUVAFFAQIYAT! ${inviter.firstName} ga 1000 XP qo'shildi. Hozirgi XP: ${newXp}`
+          );
+        } else {
+          console.log(
+            "DIQQAT: Taklif qilgan odam (inviter) bazadan topilmadi! ID noto'g'ri bo'lishi mumkin."
           );
         }
+      } else {
+        console.log("Referral yo'q yoki user o'zi o'zini taklif qildi.");
       }
+      // -------------------------
 
       return res.status(201).json({ message: "Ro'yxatdan o'tildi", user });
     }
   } catch (error) {
-    console.error("Login Error:", error);
+    console.error("KATTA XATOLIK (Login Error):", error);
     res.status(500).json({ error: error.message });
   }
 };
-
 
 
 
