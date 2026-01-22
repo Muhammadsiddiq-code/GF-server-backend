@@ -1,64 +1,80 @@
-// const { DataTypes } = require("sequelize");
-// const sequelize = require("../config/db");
+// // models/user.model.js
+// module.exports = (sequelize, DataTypes) => {
+//   const User = sequelize.define("users", { // "users" - jadval nomi
+//     telegramId: {
+//       type: DataTypes.BIGINT,
+//       allowNull: false,
+//       unique: true
+//     },
+//     firstName: {
+//       type: DataTypes.STRING
+//     },
+//     lastName: {
+//       type: DataTypes.STRING
+//     },
+//     username: {
+//       type: DataTypes.STRING
+//     },
+//     xp: {
+//       type: DataTypes.INTEGER,
+//       defaultValue: 500
+//     },
+//     role: {
+//       type: DataTypes.STRING,
+//       defaultValue: "player"
+//     }
+//   });
 
-// const User = sequelize.define("User", {
-//   id: {
-//     type: DataTypes.INTEGER,
-//     primaryKey: true,
-//     autoIncrement: true,
-//   },
-//   telegramId: {
-//     type: DataTypes.BIGINT,
-//     unique: true, // Takrorlanmasligi uchun
-//     allowNull: false,
-//   },
-//   firstName: DataTypes.STRING,
-//   lastName: DataTypes.STRING,
-//   username: DataTypes.STRING,
-//   role: {
-//     type: DataTypes.STRING,
-//     defaultValue: "player",
-//   },
-// });
-
-// module.exports = User;
-
-
-
-
-
-
-
+//   return User;
+// };
 
 
 
 
 
-// models/user.model.js
+
+
+
+
+
 module.exports = (sequelize, DataTypes) => {
-  const User = sequelize.define("users", { // "users" - jadval nomi
+  const User = sequelize.define("users", {
     telegramId: {
-      type: DataTypes.BIGINT,
+      type: DataTypes.STRING, // BIGINT o'rniga STRING ishlatamiz (Xavfsizroq)
       allowNull: false,
-      unique: true
+      unique: true,
+      primaryKey: true, // Qidirish tezroq bo'lishi uchun
     },
     firstName: {
-      type: DataTypes.STRING
+      type: DataTypes.STRING,
     },
     lastName: {
-      type: DataTypes.STRING
+      type: DataTypes.STRING,
     },
     username: {
-      type: DataTypes.STRING
+      type: DataTypes.STRING,
+    },
+    // YANGI QO'SHILGAN MAYDONLAR:
+    phone: {
+      type: DataTypes.STRING,
+      defaultValue: "",
+    },
+    city: {
+      type: DataTypes.STRING,
+      defaultValue: "-",
+    },
+    position: {
+      type: DataTypes.STRING,
+      defaultValue: "Mid",
     },
     xp: {
       type: DataTypes.INTEGER,
-      defaultValue: 500
+      defaultValue: 500,
     },
     role: {
       type: DataTypes.STRING,
-      defaultValue: "player"
-    }
+      defaultValue: "player",
+    },
   });
 
   return User;

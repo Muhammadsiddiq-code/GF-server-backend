@@ -1,54 +1,50 @@
-// const User = require("../models/userModel");
+// const db = require("../models");
+// const User = db.User;
 
-// exports.telegramAuth = async (req, res) => {
+// // 1. All Users
+// exports.getAllUsers = async (req, res) => {
+//   try {
+//     if (!User) {
+//       return res.status(500).json({ error: "User modeli undefined!" });
+//     }
+//     const users = await User.findAll({
+//       order: [["xp", "DESC"]],
+//     });
+//     res.json(users);
+//   } catch (error) {
+//     console.error("HATO:", error.message);
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+// // 2. Login or Register
+// exports.loginOrRegister = async (req, res) => {
 //   try {
 //     const { telegramId, firstName, lastName, username } = req.body;
 
-//     // 1. User bazada bormi tekshiramiz
+//     if (!telegramId) {
+//       return res.status(400).json({ message: "Telegram ID yetishmayapti" });
+//     }
+
 //     let user = await User.findOne({ where: { telegramId } });
 
-//     // 2. Agar yo'q bo'lsa, yangi yaratamiz (Ro'yxatdan o'tkazish)
 //     if (!user) {
 //       user = await User.create({
 //         telegramId,
 //         firstName,
 //         lastName,
 //         username,
+//         xp: 500,
 //       });
-//     } else {
-//       // Agar bo'lsa, ma'lumotlarini yangilab qo'yamiz (masalan username o'zgargan bo'lsa)
-//       await user.update({ firstName, lastName, username });
+//       return res.status(201).json({ message: "Ro'yxatdan o'tildi", user });
 //     }
 
-//     res.status(200).json(user);
+//     res.json({ message: "Login muvaffaqiyatli", user });
 //   } catch (error) {
+//     console.error("Login Error:", error);
 //     res.status(500).json({ error: error.message });
 //   }
 // };
-
-
-// exports.getAllUsers = async (req, res) => {
-//   try {
-//     const users = await User.findAll();
-//     res.status(200).json(users);
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -77,42 +73,61 @@ const User = db.User;
 // 1. All Users
 exports.getAllUsers = async (req, res) => {
   try {
-    if (!User) {
-      return res.status(500).json({ error: "User modeli undefined!" });
-    }
     const users = await User.findAll({
       order: [["xp", "DESC"]],
     });
     res.json(users);
   } catch (error) {
-    console.error("HATO:", error.message);
     res.status(500).json({ error: error.message });
   }
 };
 
-// 2. Login or Register
+// 2. Login, Register or UPDATE
 exports.loginOrRegister = async (req, res) => {
   try {
-    const { telegramId, firstName, lastName, username } = req.body;
+    // Frontdan kelayotgan hamma ma'lumotni olamiz
+    const { telegramId, firstName, lastName, username, phone, city, position } =
+      req.body;
 
     if (!telegramId) {
       return res.status(400).json({ message: "Telegram ID yetishmayapti" });
     }
 
-    let user = await User.findOne({ where: { telegramId } });
+    // ID string ekanligiga ishonch hosil qilamiz
+    const strId = String(telegramId);
+
+    // Bazadan qidiramiz
+    let user = await User.findOne({ where: { telegramId: strId } });
 
     if (!user) {
+      // --- YANGI USER YARATISH ---
       user = await User.create({
-        telegramId,
+        telegramId: strId,
         firstName,
         lastName,
         username,
+        phone, // Agar frontdan kelsa yoziladi
+        city, // Agar frontdan kelsa yoziladi
+        position, // Agar frontdan kelsa yoziladi
         xp: 500,
       });
       return res.status(201).json({ message: "Ro'yxatdan o'tildi", user });
-    }
+    } else {
+      // --- MAVJUD USERNI YANGILASH (UPDATE) ---
+      // Agar user allaqachon bor bo'lsa, kelgan yangi ma'lumotlar bilan yangilaymiz
+      const updatedFields = {};
+      if (firstName) updatedFields.firstName = firstName;
+      if (lastName) updatedFields.lastName = lastName;
+      if (username) updatedFields.username = username;
+      if (phone) updatedFields.phone = phone; // <-- Telefon o'zgaradi
+      if (city) updatedFields.city = city; // <-- Shahar o'zgaradi
+      if (position) updatedFields.position = position; // <-- Pozitsiya o'zgaradi
 
-    res.json({ message: "Login muvaffaqiyatli", user });
+      // Bazada yangilaymiz
+      await user.update(updatedFields);
+
+      return res.json({ message: "Ma'lumotlar yangilandi", user });
+    }
   } catch (error) {
     console.error("Login Error:", error);
     res.status(500).json({ error: error.message });

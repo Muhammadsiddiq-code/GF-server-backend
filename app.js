@@ -269,34 +269,6 @@ app.set("trust proxy", true);
 
 // Middlewares
 app.use(express.json());
-// app.use(
-//   cors({
-//     origin: "*",
-//     methods: ["GET", "POST", "PUT", "DELETE"],
-//     // 'ngrok-skip-browser-warning' headerini ruxsat etilganlar ro'yxatiga qo'shing
-//     allowedHeaders: [
-//       "Content-Type",
-//       "Authorization",
-//       "ngrok-skip-browser-warning",
-//     ],
-//   })
-// );
-
-
-
-// app.use(
-//   cors({
-//     origin: "*",
-//     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-//     allowedHeaders: [
-//       "Content-Type",
-//       "Authorization",
-//       "ngrok-skip-browser-warning",
-//     ],
-//     credentials: true,
-//   })
-// );
-
 app.use(
   cors({
     origin: "*", // Hozircha hamma joydan ruxsat berib turish eng oson yo'li
