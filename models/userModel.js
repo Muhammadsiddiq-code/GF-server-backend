@@ -54,12 +54,12 @@ module.exports = (sequelize, DataTypes) => {
     lastName: { type: DataTypes.STRING },
     username: { type: DataTypes.STRING },
 
-    // --- YANGI QO'SHILGAN ---
+    // --- O'ZGARISH SHU YERDA ---
     photo: {
-      type: DataTypes.STRING, // Rasm URL manzili
+      type: DataTypes.TEXT, // <--- STRING EMAS, TEXT BO'LISHI SHART!
       defaultValue: null,
     },
-    // ------------------------
+    // ---------------------------
 
     phone: { type: DataTypes.STRING, defaultValue: "" },
     city: { type: DataTypes.STRING, defaultValue: "-" },

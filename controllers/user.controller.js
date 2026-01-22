@@ -82,9 +82,12 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
+// 2. Login or Register
 exports.loginOrRegister = async (req, res) => {
   try {
-    // photo_url ni ham qabul qilamiz
+    // Log qilib ko'ramiz, rasm kelyaptimi?
+    console.log("Login Request Body:", req.body);
+
     const {
       telegramId,
       firstName,
@@ -93,7 +96,7 @@ exports.loginOrRegister = async (req, res) => {
       phone,
       city,
       position,
-      photo_url,
+      photo_url, // Frontdan shu nom bilan kelishi kerak
     } = req.body;
 
     if (!telegramId) {
@@ -104,13 +107,14 @@ exports.loginOrRegister = async (req, res) => {
     let user = await User.findOne({ where: { telegramId: strId } });
 
     if (!user) {
-      // YANGI USER
+      // --- YANGI USER ---
+      console.log("Yangi user yaratilmoqda, Rasm:", photo_url);
       user = await User.create({
         telegramId: strId,
         firstName,
         lastName,
         username,
-        photo: photo_url, // <-- Rasmni saqlaymiz
+        photo: photo_url, // Rasmni saqlash
         phone,
         city,
         position,
@@ -118,12 +122,15 @@ exports.loginOrRegister = async (req, res) => {
       });
       return res.status(201).json({ message: "Ro'yxatdan o'tildi", user });
     } else {
-      // UPDATE
+      // --- UPDATE ---
+      console.log("User yangilanmoqda. Yangi rasm:", photo_url);
+
       const updatedFields = {};
+      // Faqat qiymat bor bo'lsa yangilaymiz
       if (firstName) updatedFields.firstName = firstName;
       if (lastName) updatedFields.lastName = lastName;
       if (username) updatedFields.username = username;
-      if (photo_url) updatedFields.photo = photo_url; // <-- Rasm yangilansa saqlaymiz
+      if (photo_url) updatedFields.photo = photo_url; // <--- Rasm yangilanishi
       if (phone) updatedFields.phone = phone;
       if (city) updatedFields.city = city;
       if (position) updatedFields.position = position;
