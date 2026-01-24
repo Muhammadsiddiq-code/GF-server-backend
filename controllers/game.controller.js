@@ -1,6 +1,36 @@
 const { Game } = require("../models");
 const Joi = require("joi");
 
+// // Validatsiya sxemasi
+// const gameSchema = Joi.object({
+//   title: Joi.string().required(),
+//   subtitle: Joi.string().allow(""),
+//   location: Joi.string().required(),
+//   playDate: Joi.date().required(),
+//   startTime: Joi.string().required(),
+//   endTime: Joi.string().required(),
+//   price: Joi.number().required(),
+//   totalPlayers: Joi.number().integer(),
+//   playersJoined: Joi.number().integer(),
+//   isOutdoor: Joi.boolean(),
+//   hasLockers: Joi.boolean(),
+//   hasShowers: Joi.boolean(),
+//   type: Joi.string(),
+//   advance: Joi.number(),
+//   imageUrl: Joi.string().uri(),
+//   rules: Joi.array().items(Joi.string()),
+// });
+
+
+
+
+
+
+
+
+
+
+
 // Validatsiya sxemasi
 const gameSchema = Joi.object({
   title: Joi.string().required(),
@@ -19,6 +49,14 @@ const gameSchema = Joi.object({
   advance: Joi.number(),
   imageUrl: Joi.string().uri(),
   rules: Joi.array().items(Joi.string()),
+  
+  // MANA BU QATORNI QO'SHING:
+  isFinished: Joi.boolean(), 
+  
+  // Kelajakda xato bermasligi uchun bularni ham qo'shib qo'yganingiz ma'qul:
+  scoreTeamA: Joi.number().integer(),
+  scoreTeamB: Joi.number().integer(),
+  mvpPlayer: Joi.string().allow(null, "")
 });
 
 // Sanani formatlash uchun yordamchi funksiya

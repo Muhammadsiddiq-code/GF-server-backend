@@ -1,194 +1,11 @@
 // const express = require("express");
 // const dotenv = require("dotenv");
-// const cors = require("cors");
-// const { sequelize, Game, UserGame } = require("./models"); // Modellarni chaqiramiz
-// const setupSwagger = require("./swagger/swagger");
-// const swiper = require("./routes/swiper.routes");
-// const gameRoutes = require("./routes/games.routes");
-// const userRoutes = require("./routes/user.routes"); // User route qo'shildi
-// const userGameRoutes = require("./routes/userGame.routes");
-// const bodyParser = require("body-parser");
-// const paynetRoutes = require("./routes/paynet.routes");
-
-
-// dotenv.config();
-
-// const app = express();
-// const PORT = process.env.PORT || 5577;
-
-// app.use(express.json());
-// app.use(cors({ origin: "*" }));
-// app.use(bodyParser.json());
-
-// // API yo'nalishlari
-// app.use("/api", swiper);
-// app.use("/api/games", gameRoutes);
-// app.use("/api/users", userRoutes);
-// app.use("/api/user-games", userGameRoutes);
-// app.use("/api/paynet", paynetRoutes);
-
-
-// // Payme sozlamalari
-// const PAYME_AUTH = process.env.PAYME_KEY || "Paycom:YOUR_KEY_HERE";
-
-// app.post("/api/payme", async (req, res) => {
-//   const { method, params, id } = req.body;
-//   const authHeader = req.headers.authorization;
-
-//   // 1. Avtorizatsiyani tekshirish
-//   if (
-//     !authHeader ||
-//     authHeader !== `Basic ${Buffer.from(PAYME_AUTH).toString("base64")}`
-//   ) {
-//     return res.json({
-//       error: { code: -32504, message: "Avtorizatsiya xatosi" },
-//       id,
-//     });
-//   }
-
-//   try {
-//     switch (method) {
-//       case "CheckPerformTransaction": {
-//         const gameId = params.account.game_id;
-//         const amount = params.amount / 100;
-
-//         const game = await Game.findByPk(gameId);
-//         if (!game) {
-//           return res.json({
-//             error: { code: -31050, message: "O'yin topilmadi" },
-//             id,
-//           });
-//         }
-
-//         if (game.price !== amount) {
-//           return res.json({
-//             error: { code: -31001, message: "Noto'g'ri summa" },
-//             id,
-//           });
-//         }
-
-//         if (game.playersJoined >= game.totalPlayers) {
-//           return res.json({
-//             error: { code: -31099, message: "Joy qolmagan" },
-//             id,
-//           });
-//         }
-
-//         return res.json({ result: { allow: true }, id });
-//       }
-
-//       case "CreateTransaction": {
-//         // Bu yerda tranzaksiyani bazada saqlash kerak (ixtiyoriy lekin tavsiya etiladi)
-//         return res.json({
-//           result: {
-//             create_time: Date.now(),
-//             transaction: params.id,
-//             state: 1,
-//           },
-//           id,
-//         });
-//       }
-
-//       case "PerformTransaction": {
-//         const gameId = params.account.game_id;
-//         const userId = params.account.user_id; // Frontenddan yuborilgan user_id
-
-//         // FOYDALANUVCHINI O'YINGA QO'SHISH
-//         const game = await Game.findByPk(gameId);
-
-//         // Takroran qo'shilmaganini tekshirish
-//         const alreadyJoined = await UserGame.findOne({
-//           where: { gameId, userId },
-//         });
-
-//         if (!alreadyJoined) {
-//           await UserGame.create({
-//             gameId,
-//             userId,
-//             team: "A", // Default jamoa
-//           });
-//           await game.increment("playersJoined");
-//         }
-
-//         return res.json({
-//           result: {
-//             transaction: params.id,
-//             perform_time: Date.now(),
-//             state: 2,
-//           },
-//           id,
-//         });
-//       }
-
-//       case "CheckTransaction": {
-//         return res.json({
-//           result: {
-//             create_time: Date.now(),
-//             perform_time: Date.now(),
-//             cancel_time: 0,
-//             transaction: params.id,
-//             state: 2,
-//             reason: null,
-//           },
-//           id,
-//         });
-//       }
-
-//       default:
-//         return res.json({
-//           error: { code: -32601, message: "Metod topilmadi" },
-//           id,
-//         });
-//     }
-//   } catch (err) {
-//     return res.json({
-//       error: { code: -32400, message: "Tizim xatosi: " + err.message },
-//       id,
-//     });
-//   }
-// });
-
-// // Swagger
-// setupSwagger(app);
-
-// // Bazaga ulanish
-// sequelize
-//   .sync({ alter: true }) // Modeldagi o'zgarishlarni bazada yangilaydi
-//   .then(() => {
-//     console.log("✅ Database ulandi va sinxronizatsiya qilindi");
-//     app.listen(PORT, () => {
-//       console.log(`🚀 Server running at http://localhost:${PORT}`);
-//     });
-//   })
-//   .catch((err) => console.error("❌ DB xatosi:", err));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// const express = require("express");
-// const dotenv = require("dotenv");
-// const cors = require("cors");
-// const bodyParser = require("body-parser");
+// const cors = require('cors'); // Kichik harflar bilan ekanligini tekshir
 
 // const { sequelize } = require("./models");
 // const setupSwagger = require("./swagger/swagger");
 
-// const swiper = require("./routes/swiper.routes");
+// const swiperRoutes = require("./routes/swiper.routes");
 // const gameRoutes = require("./routes/games.routes");
 // const userRoutes = require("./routes/user.routes");
 // const userGameRoutes = require("./routes/userGame.routes");
@@ -197,39 +14,73 @@
 // dotenv.config();
 
 // const app = express();
-// const PORT = process.env.PORT || 5577;
+// const PORT = process.env.PORT || 8080;
+
+// // NGROK uchun
+// app.set("trust proxy", true);
 
 // // Middlewares
 // app.use(express.json());
-// app.use(bodyParser.json());
-// app.use(cors({ origin: "*" }));
+// app.use(
+//   cors({
+//     origin: "*", // Hozircha hamma joydan ruxsat berib turish eng oson yo'li
+//   })
+// );
+
+// // Bu qator Swagger so'rovlari uchun juda muhim
+// app.options("*", cors());
 
 // // Routes
-// app.use("/api/swiper", swiper);
+// app.use("/api/swiper", swiperRoutes);
 // app.use("/api/games", gameRoutes);
 // app.use("/api/users", userRoutes);
-// app.use("/api/user-games", userGameRoutes);
+// app.use("/api/user-game", userGameRoutes);
 // app.use("/api/paynet", paynetRoutes);
+
+
+
+
+
+
+// // Auth Route (Buni alohida routes fayliga olib chiqish ham mumkin)
+// const authController = require("./controllers/auth.controller");
+// app.post("/api/auth/login", authController.login);
+
+// // Service Routes
+// const serviceController = require("./controllers/service.controller");
+// const serviceRouter = require("express").Router();
+
+// serviceRouter.post("/", serviceController.createService);
+// serviceRouter.get("/", serviceController.getAllServices);
+// serviceRouter.delete("/:id", serviceController.deleteService);
+
+// app.use("/api/services", serviceRouter);
+
+
+
 
 // // Swagger
 // setupSwagger(app);
 
-// // Database + Server
+// // DB + Server
+// // app.js ning oxirgi qismini shunday o'zgartiring:
 // sequelize
 //   .sync({ alter: true })
 //   .then(() => {
-//     console.log("✅ Database ulandi va sinxronizatsiya qilindi");
-
+//     console.log("✅ Database ulandi");
 //     app.listen(PORT, "0.0.0.0", () => {
-//       // console.log(`🚀 Server running on http://localhost:${PORT}/swagger`);
-//     console.log(
-//       `service is running https://scenic-noncomprehendible-garrison.ngrok-free.dev/swagger`
-//     );
+//       console.log(`🚀 API running on port: ${PORT}`);
+//       // Railway bergan domen bormi yoki yo'qligini tekshirib chiqaradi
+//       const domain = process.env.RAILWAY_PUBLIC_DOMAIN || "localhost:8080";
+//       console.log(`🔗 Swagger UI: https://${domain}/swagger`);
 //     });
 //   })
 //   .catch((err) => {
-//     console.error("❌ DB xatosi:", err);
+//     console.error("❌ DB error:", err);
 //   });
+
+
+
 
 
 
@@ -248,9 +99,10 @@
 
 const express = require("express");
 const dotenv = require("dotenv");
-const cors = require('cors'); // Kichik harflar bilan ekanligini tekshir
+const cors = require("cors");
 
-const { sequelize } = require("./models");
+// 1. User modelini ham import qilish kerak (Admin yaratish uchun)
+const { sequelize, User } = require("./models");
 const setupSwagger = require("./swagger/swagger");
 
 const swiperRoutes = require("./routes/swiper.routes");
@@ -264,18 +116,17 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// NGROK uchun
+// NGROK va Railway uchun
 app.set("trust proxy", true);
 
 // Middlewares
 app.use(express.json());
 app.use(
   cors({
-    origin: "*", // Hozircha hamma joydan ruxsat berib turish eng oson yo'li
+    origin: "*",
   })
 );
 
-// Bu qator Swagger so'rovlari uchun juda muhim
 app.options("*", cors());
 
 // Routes
@@ -285,18 +136,61 @@ app.use("/api/users", userRoutes);
 app.use("/api/user-game", userGameRoutes);
 app.use("/api/paynet", paynetRoutes);
 
+// Auth Route
+const authController = require("./controllers/auth.controller");
+app.post("/api/auth/login", authController.login);
+
+// Service Routes
+const serviceController = require("./controllers/service.controller");
+const serviceRouter = require("express").Router();
+
+serviceRouter.post("/", serviceController.createService);
+serviceRouter.get("/", serviceController.getAllServices);
+serviceRouter.delete("/:id", serviceController.deleteService);
+
+app.use("/api/services", serviceRouter);
+
 // Swagger
 setupSwagger(app);
 
 // DB + Server
-// app.js ning oxirgi qismini shunday o'zgartiring:
 sequelize
   .sync({ alter: true })
-  .then(() => {
+  .then(async () => {
+    // <--- ASYNC so'zi qo'shildi
     console.log("✅ Database ulandi");
+
+    // --- ADMIN YARATISH LOGIKASI ---
+    try {
+      // Admin borligini tekshiramiz
+      const adminExists = await User.findOne({ where: { username: "admin" } });
+
+      if (!adminExists) {
+        // Agar yo'q bo'lsa, yaratamiz
+        await User.create({
+          firstName: "Muhammad Siddiq",
+          lastName: "Xamidullayev",
+          username: "kolizey", // LOGIN
+          password: "5577", // PAROL (Haqiqiy loyihada murakkabroq qiling)
+          role: "admin",
+          phone: "+998 97 827-55-77",
+          xp: 99999,
+          photo: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png", // Admin uchun default rasm
+        });
+        console.log("🔥 DIQQAT: Admin yaratildi! Login: 'admin', Parol: '123'");
+      } else {
+        console.log("👍 Admin foydalanuvchisi allaqachon mavjud.");
+      }
+    } catch (e) {
+      console.log(
+        "⚠️ Admin yaratishda xatolik (User model maydonlarini tekshiring):",
+        e.message
+      );
+    }
+    // -------------------------------
+
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 API running on port: ${PORT}`);
-      // Railway bergan domen bormi yoki yo'qligini tekshirib chiqaradi
       const domain = process.env.RAILWAY_PUBLIC_DOMAIN || "localhost:8080";
       console.log(`🔗 Swagger UI: https://${domain}/swagger`);
     });
