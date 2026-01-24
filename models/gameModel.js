@@ -108,6 +108,13 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+
+    mapUrl: {
+      type: DataTypes.TEXT, // Link uzun bo'lishi mumkin, shuning uchun TEXT
+      allowNull: true,
+    },
+
+    
     subtitle: { type: DataTypes.STRING },
     location: { type: DataTypes.STRING, allowNull: false },
     playDate: { type: DataTypes.DATE, allowNull: false },
