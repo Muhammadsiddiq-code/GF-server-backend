@@ -194,7 +194,7 @@ sequelize
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 API running on port: ${PORT}`);
-      const domain = process.env.RAILWAY_PUBLIC_DOMAIN || "localhost:8080";
+      const domain = process.env.DATABASE_URL || "localhost:8080";
       console.log(`🔗 Swagger UI: https://${domain}/swagger`);
     });
   })
