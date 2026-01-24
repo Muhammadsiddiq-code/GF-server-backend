@@ -175,6 +175,9 @@ sequelize
           role: "admin",
           phone: "+998 97 827-55-77",
           xp: 99999,
+
+          telegramId: "000000",
+
           photo: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png", // Admin uchun default rasm
         });
         console.log("🔥 DIQQAT: Admin yaratildi! Login: 'admin', Parol: '123'");
