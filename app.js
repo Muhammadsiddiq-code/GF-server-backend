@@ -172,7 +172,7 @@ sequelize
           firstName: "Muhammad Siddiq",
           lastName: "Xamidullayev",
           username: "kolizey", // LOGIN
-          password: "5577", // PAROL
+          password: "55775577", // PAROL
           role: "admin",
           phone: "+998 97 827-55-77",
           xp: 99999,
