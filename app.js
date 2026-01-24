@@ -161,32 +161,32 @@ sequelize
     console.log("✅ Database ulandi");
 
     // --- ADMIN YARATISH LOGIKASI ---
+// --- ADMIN YARATISH LOGIKASI (TUZATILDI) ---
     try {
-      // Admin borligini tekshiramiz
-      const adminExists = await User.findOne({ where: { username: "admin" } });
+      // 1-XATOLIK TUZATILDI: Biz 'kolizey'ni yaratmoqchimizmi, demak 'kolizey'ni qidirishimiz kerak.
+      // Oldin: where: { username: "admin" } edi.
+      const adminExists = await User.findOne({ where: { username: "kolizey" } });
 
       if (!adminExists) {
-        // Agar yo'q bo'lsa, yaratamiz
         await User.create({
           firstName: "Muhammad Siddiq",
           lastName: "Xamidullayev",
           username: "kolizey", // LOGIN
-          password: "5577", // PAROL (Haqiqiy loyihada murakkabroq qiling)
+          password: "5577",    // PAROL
           role: "admin",
           phone: "+998 97 827-55-77",
           xp: 99999,
-
           telegramId: "000000",
-
-          photo: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png", // Admin uchun default rasm
+          photo: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
         });
-        console.log("🔥 DIQQAT: Admin yaratildi! Login: 'admin', Parol: '123'");
+        // 2-XATOLIK TUZATILDI: Logda ham to'g'ri ma'lumot chiqishi kerak
+        console.log("🔥 DIQQAT: Admin yaratildi! Login: 'kolizey', Parol: '5577'");
       } else {
-        console.log("👍 Admin foydalanuvchisi allaqachon mavjud.");
+        console.log("👍 'kolizey' admini allaqachon mavjud.");
       }
     } catch (e) {
       console.log(
-        "⚠️ Admin yaratishda xatolik (User model maydonlarini tekshiring):",
+        "⚠️ Admin yaratishda xatolik:",
         e.message
       );
     }
@@ -194,10 +194,8 @@ sequelize
 
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 API running on port: ${PORT}`);
-      const domain = process.env.DATABASE_URL || "localhost:8080";
+      // 3-XATOLIK TUZATILDI: DATABASE_URL bu havola emas, bu baza siri. 
+      // RAILWAY_PUBLIC_DOMAIN ishlatish to'g'riroq.
+      const domain = process.env.RAILWAY_PUBLIC_DOMAIN || "localhost:8080";
       console.log(`🔗 Swagger UI: https://${domain}/swagger`);
     });
-  })
-  .catch((err) => {
-    console.error("❌ DB error:", err);
-  });
