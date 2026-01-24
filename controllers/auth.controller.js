@@ -5,24 +5,24 @@ exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    console.log("Login urinish:", username, password); // <-- Debug uchun log qo'shing
+    console.log("Login urinish:", username, password);
 
-    // 1. Userni izlaymiz
-    const user = await User.findOne({ where: { username } });
+    // O'ZGARISH SHU YERDA: .unscoped() qo'shildi
+    // Bu funksiya yashiringan maydonlarni (parolni) ham olib keladi
+    const user = await User.unscoped().findOne({ where: { username } });
 
     if (!user) {
       console.log("User topilmadi");
       return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
     }
 
-    // 2. Parolni solishtiramiz (Hozircha oddiy matn sifatida)
-    // Agar sizda bcrypt bo'lsa, bu yer boshqacha bo'lishi mumkin
+    // Endi user.password undefined bo'lmaydi
     if (user.password !== password) {
       console.log("Parol xato. Kutilgan:", user.password, "Kelgan:", password);
       return res.status(401).json({ message: "Parol noto'g'ri" });
     }
 
-    // 3. Token beramiz
+    // Token beramiz
     const token = jwt.sign({ id: user.id, role: user.role }, "SECRET_KEY_123", {
       expiresIn: "24h",
     });
@@ -34,6 +34,7 @@ exports.login = async (req, res) => {
         id: user.id,
         firstName: user.firstName,
         username: user.username,
+        photo: user.photo,
       },
     });
   } catch (error) {
