@@ -1,60 +1,114 @@
 // const db = require("../models");
 // const User = db.User;
 
-// // 1. All Users
-// exports.getAllUsers = async (req, res) => {
-//   try {
-//     if (!User) {
-//       return res.status(500).json({ error: "User modeli undefined!" });
-//     }
-//     const users = await User.findAll({
-//       order: [["xp", "DESC"]],
-//     });
-//     res.json(users);
-//   } catch (error) {
-//     console.error("HATO:", error.message);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
-// // 2. Login or Register
+// // Login or Register
 // exports.loginOrRegister = async (req, res) => {
 //   try {
-//     const { telegramId, firstName, lastName, username } = req.body;
+//     const {
+//       telegramId,
+//       firstName,
+//       lastName,
+//       username,
+//       photo_url,
+//       start_param, // <-- Frontendan kelayotgan referral ID
+//     } = req.body;
+
+//     console.log("------------------------------------------------");
+//     console.log("LOGIN SO'ROVI KELDI:");
+//     console.log("Kelgan User ID:", telegramId);
+//     console.log("Kelgan Start Param (Referral):", start_param);
 
 //     if (!telegramId) {
 //       return res.status(400).json({ message: "Telegram ID yetishmayapti" });
 //     }
 
-//     let user = await User.findOne({ where: { telegramId } });
+//     const strId = String(telegramId);
+//     let user = await User.findOne({ where: { telegramId: strId } });
 
-//     if (!user) {
+//     // 1. AGAR USER MAVJUD BO'LSA (LOGIN)
+//     if (user) {
+//       console.log("User allaqachon mavjud. Login qilinmoqda.");
+
+//       const updatedFields = {};
+//       if (firstName) updatedFields.firstName = firstName;
+//       if (lastName) updatedFields.lastName = lastName;
+//       if (username) updatedFields.username = username;
+//       if (photo_url) updatedFields.photo = photo_url;
+
+//       await user.update(updatedFields);
+//       return res.json({ message: "Login muvaffaqiyatli", user });
+//     }
+
+//     // 2. AGAR USER YANGI BO'LSA (REGISTER)
+//     else {
+//       console.log("Yangi user yaratilmoqda...");
+
+//       // Userni yaratamiz
 //       user = await User.create({
-//         telegramId,
+//         telegramId: strId,
 //         firstName,
 //         lastName,
 //         username,
-//         xp: 500,
+//         photo: photo_url,
+//         invitedBy: start_param ? String(start_param) : null,
+//         xp: 500, // Boshlang'ich bonus
 //       });
+
+//       console.log("Yangi user bazaga yozildi.");
+
+//       // --- REFERRAL LOGIKASI ---
+//       // Agar start_param bo'lsa VA o'zi o'zini taklif qilmagan bo'lsa
+//       if (start_param && String(start_param) !== strId) {
+//         console.log("Referral tekshirilmoqda. Inviter ID:", start_param);
+
+//         // Taklif qilgan odamni qidiramiz
+//         const inviter = await User.findOne({
+//           where: { telegramId: String(start_param) },
+//         });
+
+//         if (inviter) {
+//           console.log(
+//             `Taklif qilgan odam topildi: ${inviter.firstName} (${inviter.xp} XP)`
+//           );
+
+//           // XP ni yangilashning eng ishonchli yo'li:
+//           const newXp = inviter.xp + 1000;
+//           await inviter.update({ xp: newXp });
+
+//           console.log(
+//             `MUVAFFAQIYAT! ${inviter.firstName} ga 1000 XP qo'shildi. Hozirgi XP: ${newXp}`
+//           );
+//         } else {
+//           console.log(
+//             "DIQQAT: Taklif qilgan odam (inviter) bazadan topilmadi! ID noto'g'ri bo'lishi mumkin."
+//           );
+//         }
+//       } else {
+//         console.log("Referral yo'q yoki user o'zi o'zini taklif qildi.");
+//       }
+//       // -------------------------
+
 //       return res.status(201).json({ message: "Ro'yxatdan o'tildi", user });
 //     }
-
-//     res.json({ message: "Login muvaffaqiyatli", user });
 //   } catch (error) {
-//     console.error("Login Error:", error);
+//     console.error("KATTA XATOLIK (Login Error):", error);
 //     res.status(500).json({ error: error.message });
 //   }
 // };
 
 
 
-
-
-
-
-
-
-
+// // 1. All Users
+// exports.getAllUsers = async (req, res) => {
+//   try {
+//     const users = await User.findAll({
+//       order: [["xp", "DESC"]],
+//     });
+//     res.json(users);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
 
 
 
@@ -70,7 +124,7 @@
 const db = require("../models");
 const User = db.User;
 
-// Login or Register
+// Login or Register (Va Profile Update)
 exports.loginOrRegister = async (req, res) => {
   try {
     const {
@@ -79,13 +133,16 @@ exports.loginOrRegister = async (req, res) => {
       lastName,
       username,
       photo_url,
-      start_param, // <-- Frontendan kelayotgan referral ID
+      start_param,
+      // --- YANGI: Frontenddan keladigan qo'shimcha ma'lumotlar ---
+      phone,
+      city,
+      position,
     } = req.body;
 
+    // Loglarni ko'rish (Debugging)
     console.log("------------------------------------------------");
-    console.log("LOGIN SO'ROVI KELDI:");
-    console.log("Kelgan User ID:", telegramId);
-    console.log("Kelgan Start Param (Referral):", start_param);
+    console.log("REQUEST KELDI:", { telegramId, city, position, phone });
 
     if (!telegramId) {
       return res.status(400).json({ message: "Telegram ID yetishmayapti" });
@@ -94,18 +151,29 @@ exports.loginOrRegister = async (req, res) => {
     const strId = String(telegramId);
     let user = await User.findOne({ where: { telegramId: strId } });
 
-    // 1. AGAR USER MAVJUD BO'LSA (LOGIN)
+    // 1. AGAR USER MAVJUD BO'LSA (LOGIN YOKI UPDATE)
     if (user) {
-      console.log("User allaqachon mavjud. Login qilinmoqda.");
+      console.log("User topildi, ma'lumotlar yangilanmoqda...");
 
       const updatedFields = {};
+
+      // Asosiy ma'lumotlar
       if (firstName) updatedFields.firstName = firstName;
       if (lastName) updatedFields.lastName = lastName;
       if (username) updatedFields.username = username;
       if (photo_url) updatedFields.photo = photo_url;
 
+      // --- MUHIM O'ZGARISH: Profil ma'lumotlarini yangilash ---
+      // Agar frontenddan phone, city yoki position kelsa, bazaga yozamiz
+      if (phone) updatedFields.phone = phone;
+      if (city) updatedFields.city = city;
+      if (position) updatedFields.position = position;
+      // -------------------------------------------------------
+
       await user.update(updatedFields);
-      return res.json({ message: "Login muvaffaqiyatli", user });
+
+      console.log("Yangilandi:", updatedFields);
+      return res.json({ message: "Muvaffaqiyatli yangilandi", user });
     }
 
     // 2. AGAR USER YANGI BO'LSA (REGISTER)
@@ -120,52 +188,36 @@ exports.loginOrRegister = async (req, res) => {
         username,
         photo: photo_url,
         invitedBy: start_param ? String(start_param) : null,
-        xp: 500, // Boshlang'ich bonus
+        xp: 500,
+        // Default qiymatlar modelda bor, lekin kelgan bo'lsa yozamiz
+        phone: phone || "",
+        city: city || "-",
+        position: position || "Mid",
       });
 
       console.log("Yangi user bazaga yozildi.");
 
       // --- REFERRAL LOGIKASI ---
-      // Agar start_param bo'lsa VA o'zi o'zini taklif qilmagan bo'lsa
       if (start_param && String(start_param) !== strId) {
-        console.log("Referral tekshirilmoqda. Inviter ID:", start_param);
-
-        // Taklif qilgan odamni qidiramiz
         const inviter = await User.findOne({
           where: { telegramId: String(start_param) },
         });
 
         if (inviter) {
-          console.log(
-            `Taklif qilgan odam topildi: ${inviter.firstName} (${inviter.xp} XP)`
-          );
-
-          // XP ni yangilashning eng ishonchli yo'li:
           const newXp = inviter.xp + 1000;
           await inviter.update({ xp: newXp });
-
-          console.log(
-            `MUVAFFAQIYAT! ${inviter.firstName} ga 1000 XP qo'shildi. Hozirgi XP: ${newXp}`
-          );
-        } else {
-          console.log(
-            "DIQQAT: Taklif qilgan odam (inviter) bazadan topilmadi! ID noto'g'ri bo'lishi mumkin."
-          );
+          console.log(`Referral ishladi: ${inviter.firstName} +1000 XP`);
         }
-      } else {
-        console.log("Referral yo'q yoki user o'zi o'zini taklif qildi.");
       }
       // -------------------------
 
       return res.status(201).json({ message: "Ro'yxatdan o'tildi", user });
     }
   } catch (error) {
-    console.error("KATTA XATOLIK (Login Error):", error);
+    console.error("XATOLIK:", error);
     res.status(500).json({ error: error.message });
   }
 };
-
-
 
 // 1. All Users
 exports.getAllUsers = async (req, res) => {
