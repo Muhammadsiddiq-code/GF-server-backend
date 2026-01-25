@@ -77,11 +77,11 @@ db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
 // --- MODELLARNI YUKLASH ---
-db.User = require("./userModel")(sequelize, DataTypes);
-db.Game = require("./gameModel")(sequelize, DataTypes);
-db.UserGame = require("./UserGame")(sequelize, DataTypes);
+db.User = require("./userModel")(sequelize, DataTypes); // Fayl nomi to'g'riligini tekshiring (user.model.js bo'lsa shuni yozing)
+db.Game = require("./gameModel")(sequelize, DataTypes); // game.model.js bo'lishi mumkin
+db.UserGame = require("./UserGame")(sequelize, DataTypes); // userGame.model.js bo'lishi mumkin
 db.Swiper = require("./swiper")(sequelize, DataTypes);
-db.Transaction = require("./transaction.model")(sequelize, DataTypes); // <-- YANGI: Transaction qo'shildi
+db.Transaction = require("./transaction.model")(sequelize, DataTypes); // <-- YANGI MODEL QO'SHILDI
 
 // --- MUNOSABATLAR (RELATIONSHIPS) ---
 
@@ -97,14 +97,13 @@ db.Game.belongsToMany(db.User, {
   otherKey: "userId",
 });
 
-// UserGame bog'lanishlari
 db.UserGame.belongsTo(db.Game, { foreignKey: "gameId" });
 db.Game.hasMany(db.UserGame, { foreignKey: "gameId" });
 
 db.UserGame.belongsTo(db.User, { foreignKey: "userId" });
 db.User.hasMany(db.UserGame, { foreignKey: "userId" });
 
-// Transaction bog'lanishlari (YANGI)
+// --- YANGI: TRANSACTION MUNOSABATI ---
 db.User.hasMany(db.Transaction, { foreignKey: "userId" });
 db.Transaction.belongsTo(db.User, { foreignKey: "userId" });
 
