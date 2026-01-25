@@ -124,6 +124,9 @@
 
 const db = require("../models");
 const User = db.User;
+// controllers/user.controller.js
+const { User, Transaction } = require("../models"); // Transaction ni import qilishni unutmang!
+
 
 // Tasodifiy 16 xonalik karta raqami yasash (GF-XXXX-XXXX-XXXX)
 const generateCardNumber = () => {
@@ -237,41 +240,51 @@ exports.getAllUsers = async (req, res) => {
 
 
 
-// ... (boshqa funksiyalar tepada)
 
-// Admin uchun balansni o'zgartirish
-exports.updateBalance = async (req, res) => {
+// ... boshqa funksiyalar (login, getAllUsers va h.k) ...
+
+// Balansni yangilash (Admin tomonidan)
+exports.updateUserBalance = async (req, res) => {
   try {
-    const { userId, amount, type } = req.body; // userId, amount (summa), type ('add' yoki 'subtract')
+    const { userId, amount, type } = req.body; // Frontenddan keladigan ma'lumotlar
 
+    // 1. Userni topish
     const user = await User.findByPk(userId);
-    if (!user) return res.status(404).json({ message: "User topilmadi" });
-
-    let newBalance = parseFloat(user.balance || 0);
-    const changeAmount = parseFloat(amount);
-
-    if (type === 'add') {
-        newBalance += changeAmount;
-    } else if (type === 'subtract') {
-        newBalance -= changeAmount;
+    if (!user) {
+      return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
     }
 
+    const value = parseFloat(amount);
+    let newBalance = parseFloat(user.balance || 0);
+
+    // 2. Balansni hisoblash
+    if (type === "add") {
+      newBalance += value;
+    } else if (type === "subtract") {
+      newBalance -= value;
+    }
+
+    // 3. User balansini yangilash
     await user.update({ balance: newBalance });
 
-    // Transaction tarixiga yozib qo'yamiz (Admin tomonidan o'zgargani bilinishi uchun)
-    const { Transaction } = require("../models"); 
-    if(Transaction) {
-        await Transaction.create({
-            userId: user.id,
-            amount: changeAmount,
-            type: type === 'add' ? 'income' : 'expense',
-            description: `Admin tomonidan ${type === 'add' ? "qo'shildi" : "ayirildi"}`,
-            paymentMethod: 'admin'
-        });
-    }
+    // 4. Tarix (Transaction) yaratish
+    // Bu juda muhim, aks holda telefonda "History" bo'limida ko'rinmaydi
+    await Transaction.create({
+      userId: user.id,
+      amount: value,
+      type: type === "add" ? "income" : "expense", // Kirim yoki Chiqim
+      description: "Admin tomonidan balans o'zgartirildi",
+      paymentMethod: "cash", // Yoki 'admin'
+      status: "completed"
+    });
 
-    res.json({ message: "Balans yangilandi", newBalance });
+    res.json({
+      message: "Balans muvaffaqiyatli yangilandi",
+      newBalance: newBalance,
+    });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("Update Balance Error:", error);
+    res.status(500).json({ message: "Server xatosi: " + error.message });
   }
 };
