@@ -1,17 +1,15 @@
+// routes/payment.routes.js
 const express = require("express");
 const router = express.Router();
 const paymentController = require("../controllers/payment.controller");
 
-// 1. Hamyondan to'lash
-router.post("/pay-from-balance", paymentController.payFromBalance);
-
-// 2. O'yin uchun to'lov linki (Payme/Click)
+// Invoice yaratish (BotFather link olish uchun)
 router.post("/create-invoice", paymentController.createInvoice);
 
-// 3. Balansni to'ldirish uchun link
-router.post("/create-topup-invoice", paymentController.createTopUpInvoice);
+// Hamyon orqali to'lash
+router.post("/pay-wallet", paymentController.payWithWallet);
 
-// 4. Tarixni olish (Mana shu qator xato berayotgan edi)
-router.get("/history", paymentController.getHistory);
+// User profilini olish (Balans va Karta raqami uchun)
+router.get("/user/:telegramId", paymentController.getUserProfile);
 
 module.exports = router;

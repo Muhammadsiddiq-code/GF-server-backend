@@ -52,9 +52,10 @@ module.exports = (sequelize, DataTypes) => {
     },
     telegramId: {
       type: DataTypes.STRING,
-      allowNull: false,
       unique: true,
+      allowNull: true,
     },
+
     firstName: { type: DataTypes.STRING },
     lastName: { type: DataTypes.STRING },
     username: { type: DataTypes.STRING },
@@ -73,18 +74,24 @@ module.exports = (sequelize, DataTypes) => {
     xp: { type: DataTypes.INTEGER, defaultValue: 500 },
     role: { type: DataTypes.STRING, defaultValue: "player" },
 
-    // --- YANGI: KASHALOK (HAMYON) ---
     balance: {
-      type: DataTypes.FLOAT, // Pul o'nlik bo'lishi mumkin
+      type: DataTypes.FLOAT,
       defaultValue: 0,
     },
     walletCardNumber: {
       type: DataTypes.STRING,
-      unique: true, // Har bir userda unikal bo'lishi shart
-      allowNull: true,
+      unique: true,
     },
-    // ---------------------------------
   });
 
   return User;
 };
+
+
+
+
+
+
+
+
+

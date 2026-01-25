@@ -1,22 +1,28 @@
 module.exports = (sequelize, DataTypes) => {
-  const Transaction = sequelize.define("transactions", {
-    userId: {
+  const Transaction = sequelize.define("Transaction", {
+    id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      autoIncrement: true,
+      primaryKey: true,
     },
     amount: {
-      type: DataTypes.FLOAT,
+      type: DataTypes.FLOAT, // Yoki DECIMAL(10, 2)
       allowNull: false,
     },
     type: {
-      type: DataTypes.STRING, // 'income' (kirim) yoki 'expense' (chiqim)
+      type: DataTypes.ENUM("income", "expense"), // income = kirim, expense = chiqim
       allowNull: false,
     },
     description: {
-      type: DataTypes.STRING, // Masalan: "O'yin uchun to'lov" yoki "Hisob to'ldirish"
+      type: DataTypes.STRING,
     },
     paymentMethod: {
-      type: DataTypes.STRING, // 'payme', 'click', 'wallet'
+      type: DataTypes.ENUM("telegram_payment", "wallet", "cash"),
+      defaultValue: "telegram_payment",
+    },
+    status: {
+      type: DataTypes.STRING,
+      defaultValue: "completed",
     },
   });
 
