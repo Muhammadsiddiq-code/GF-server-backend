@@ -1,44 +1,59 @@
-const { User } = require("../models");
-const jwt = require("jsonwebtoken");
+const { User } = require("../models"); // User modelini chaqiramiz
+const { v4: uuidv4 } = require("uuid");
 
 exports.login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { telegramId, firstName, username, photo_url } = req.body;
 
-    console.log("Login urinish:", username, password);
-
-    // O'ZGARISH SHU YERDA: .unscoped() qo'shildi
-    // Bu funksiya yashiringan maydonlarni (parolni) ham olib keladi
-    const user = await User.unscoped().findOne({ where: { username } });
-
-    if (!user) {
-      console.log("User topilmadi");
-      return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
+    // 1. Telegram ID kelganini tekshirish
+    if (!telegramId) {
+      return res.status(400).json({ msg: "Telegram ID talab qilinadi!" });
     }
 
-    // Endi user.password undefined bo'lmaydi
-    if (user.password !== password) {
-      console.log("Parol xato. Kutilgan:", user.password, "Kelgan:", password);
-      return res.status(401).json({ message: "Parol noto'g'ri" });
-    }
-
-    // Token beramiz
-    const token = jwt.sign({ id: user.id, role: user.role }, "SECRET_KEY_123", {
-      expiresIn: "24h",
+    // 2. Bazadan userni qidirish
+    let user = await User.findOne({
+      where: { telegramId: String(telegramId) },
     });
 
+    // 3. Agar user yo'q bo'lsa, yangi yaratish
+    if (!user) {
+      // Yangi karta raqami generatsiya qilish
+      const newCardNumber =
+        "GF-" +
+        uuidv4().split("-")[0].toUpperCase() +
+        "-" +
+        Math.floor(1000 + Math.random() * 9000);
+
+      user = await User.create({
+        telegramId: String(telegramId),
+        firstName: firstName || "Noma'lum",
+        username: username || "",
+        balance: 0,
+        xp: 0,
+        walletCardNumber: newCardNumber,
+        photo: photo_url || null,
+      });
+      console.log("Yangi foydalanuvchi yaratildi:", user.firstName);
+    } else {
+      // Agar user bor bo'lsa, ma'lumotlarini yangilash (masalan rasm yoki ism o'zgargan bo'lsa)
+      if (firstName || username || photo_url) {
+        await user.update({
+          firstName: firstName || user.firstName,
+          username: username || user.username,
+          photo: photo_url || user.photo, // Rasm URL ni saqlash
+        });
+      }
+    }
+
+    // 4. Frontendga javob qaytarish
     res.json({
-      message: "Login muvaffaqiyatli",
-      token,
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        username: user.username,
-        photo: user.photo,
-      },
+      success: true,
+      user: user,
     });
   } catch (error) {
-    console.error("Login xatosi:", error);
-    res.status(500).json({ message: error.message });
+    console.error("Auth Login Xatosi:", error);
+    res
+      .status(500)
+      .json({ msg: "Serverda xatolik yuz berdi: " + error.message });
   }
 };

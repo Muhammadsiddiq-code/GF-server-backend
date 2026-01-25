@@ -210,6 +210,8 @@ const userRoutes = require("./routes/user.routes");
 const userGameRoutes = require("./routes/userGame.routes");
 const paymentRoutes = require("./routes/payment.routes");
 
+const authController = require("./controllers/auth.controller");
+
 dotenv.config();
 
 const app = express();
@@ -229,6 +231,9 @@ app.use("/api/games", gameRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/user-game", userGameRoutes);
 app.use("/api/payment", paymentRoutes);
+
+
+app.post("/api/auth/login", authController.login);
 
 // Auth & Service Routes
 const authController = require("./controllers/auth.controller");
