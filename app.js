@@ -358,33 +358,39 @@ if (!token) {
   });
 }
 
+// ... tepadagi kodlar ...
+
 // ------------------------------------------------------------------
 // --- DB Sync & Server Start ---
 // ------------------------------------------------------------------
 
-// DIQQAT: force: true qildim. Bu bazadagi xatolarni tozalab tashlaydi.
-// Bir marta ishlagandan keyin, keyingi safar 'alter: true' ga qaytarishingiz mumkin.
 sequelize
-  .sync({ force: true })
+  .sync({ alter: true }) // <--- "force" ni "alter" ga o'zgartirdim. Endi ma'lumot o'chmaydi!
   .then(async () => {
-    console.log("✅ Database tozalandi va qayta ulandi (Force Sync)");
+    console.log("✅ Database muvaffaqiyatli ulandi");
 
+    // Admin yaratish (faqat yo'q bo'lsa yaratadi)
     try {
-      // Default Admin yaratish
-      await User.create({
-        firstName: "Muhammad Siddiq",
-        lastName: "Xamidullayev",
-        username: "kolizey",
-        // Admin telegram ID si string bo'lishi kerak
-        telegramId: "000000",
-        balance: 1000000,
-        role: "admin",
-        walletCardNumber: "GF-ADMIN-8888",
-        phone: "+998901234567",
+      const adminExists = await User.findOne({
+        where: { username: "kolizey" },
       });
-      console.log("🔥 Admin 'kolizey' yaratildi!");
+      if (!adminExists) {
+        await User.create({
+          firstName: "Muhammad Siddiq",
+          lastName: "Xamidullayev",
+          username: "kolizey",
+          password: "55775577", // Agar password ishlatayotgan bo'lsangiz
+          role: "admin",
+          phone: "+998 97 827-55-77",
+          xp: 99999,
+          telegramId: "000000",
+          balance: 0,
+          walletCardNumber: "GF-8600-0000-0000-0000",
+        });
+        console.log("🔥 Admin 'kolizey' yaratildi!");
+      }
     } catch (e) {
-      console.log("⚠️ Admin yaratishda info:", e.message);
+      console.log("⚠️ Admin tekshirishda xato:", e.message);
     }
 
     app.listen(PORT, "0.0.0.0", () => {
