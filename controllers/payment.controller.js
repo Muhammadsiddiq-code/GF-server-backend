@@ -78,17 +78,18 @@
 
 
 const axios = require("axios");
-const { Game, User, UserGame, Transaction, sequelize } = require("../models"); // Transaction ni to'g'ri import qiling
+const { Game, User, UserGame, Transaction, sequelize } = require("../models");
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-// 1. O'YIN UCHUN INVOICE
+// 1. O'YIN UCHUN INVOICE (Payme/Click orqali to'g'ridan-to'g'ri to'lash)
 exports.createInvoiceLink = async (req, res) => {
   try {
     const { gameId, userId, provider } = req.body;
     const game = await Game.findByPk(gameId);
     if (!game) return res.status(404).json({ message: "O'yin topilmadi" });
 
+    // Zaklad 30%
     const advanceAmount = parseInt(game.price * 0.3);
     const amountInTiyin = advanceAmount * 100;
 
@@ -104,7 +105,7 @@ exports.createInvoiceLink = async (req, res) => {
       {
         title: game.title,
         description: `O'yin uchun zaklad to'lovi (${game.location})`,
-        payload: `GAME_${gameId}_${userId}`,
+        payload: `GAME_${gameId}_${userId}`, // Payload: GAME_...
         provider_token: providerToken,
         currency: "UZS",
         prices: [{ label: "Zaklad (30%)", amount: amountInTiyin }],
@@ -125,16 +126,21 @@ exports.createInvoiceLink = async (req, res) => {
   }
 };
 
-// 2. BALANSNI TO'LDIRISH UCHUN INVOICE
+// 2. BALANSNI TO'LDIRISH UCHUN INVOICE (YANGI)
 exports.createTopUpInvoice = async (req, res) => {
   try {
-    const { userId, amount, provider } = req.body;
+    const { userId, amount, provider } = req.body; // amount so'mda keladi
+
+    // Minimal summa tekshiruvi
     if (amount < 1000)
       return res.status(400).json({ message: "Minimal to'lov 1000 so'm" });
 
     let providerToken = "";
     if (provider === "payme") providerToken = process.env.PAYME_PROVIDER_TOKEN;
     if (provider === "click") providerToken = process.env.CLICK_PROVIDER_TOKEN;
+
+    if (!providerToken)
+      return res.status(400).json({ message: "Token topilmadi" });
 
     const amountInTiyin = amount * 100;
 
@@ -143,11 +149,11 @@ exports.createTopUpInvoice = async (req, res) => {
       {
         title: "Hamyonni to'ldirish",
         description: `GF Hisobingizni ${amount} so'mga to'ldirish`,
-        payload: `TOPUP_${userId}_${amount}`,
+        payload: `TOPUP_${userId}_${amount}`, // Payload: TOPUP_...
         provider_token: providerToken,
         currency: "UZS",
         prices: [{ label: "Hamyon to'lovi", amount: amountInTiyin }],
-        photo_url: "https://cdn-icons-png.flaticon.com/512/2953/2953363.png",
+        photo_url: "https://cdn-icons-png.flaticon.com/512/2953/2953363.png", // Wallet icon
         need_name: true,
       }
     );
@@ -155,6 +161,7 @@ exports.createTopUpInvoice = async (req, res) => {
     if (response.data.ok) {
       res.json({ url: response.data.result });
     } else {
+      console.error("Telegram Error:", response.data);
       res.status(500).json({ message: "Invoice yaratishda xatolik" });
     }
   } catch (error) {
@@ -163,7 +170,7 @@ exports.createTopUpInvoice = async (req, res) => {
   }
 };
 
-// 3. BALANSDAN TO'LASH (Transaction bilan)
+// 3. BALANSDAN TO'LASH
 exports.payFromBalance = async (req, res) => {
   const t = await sequelize.transaction();
   try {
@@ -224,7 +231,7 @@ exports.payFromBalance = async (req, res) => {
     // 3. O'yin statistikasini yangilash
     await game.increment("playersJoined", { transaction: t });
 
-    // 4. TRANZAKSIYA TARIXIGA YOZISH (YANGI)
+    // 4. Tarixga yozish
     await Transaction.create(
       {
         userId: user.id,
