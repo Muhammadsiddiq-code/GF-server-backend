@@ -1,15 +1,16 @@
-// routes/payment.routes.js
 const express = require("express");
 const router = express.Router();
+// Controller to'g'ri import qilinganiga ishonch hosil qiling
 const paymentController = require("../controllers/payment.controller");
 
-// Invoice yaratish (BotFather link olish uchun)
+// 1. Invoice yaratish
 router.post("/create-invoice", paymentController.createInvoice);
 
-// Hamyon orqali to'lash
+// 2. Hamyon orqali to'lash
 router.post("/pay-wallet", paymentController.payWithWallet);
 
-// User profilini olish (Balans va Karta raqami uchun)
-router.get("/user/:telegramId", paymentController.getUserProfile);
+// 3. User profilini olish (Xatolik chiqqan joy shu yer edi)
+// Bu yerda paymentController.getUserWallet funksiyasi mavjud bo'lishi kerak
+router.get("/user/:telegramId", paymentController.getUserWallet);
 
 module.exports = router;

@@ -3,15 +3,14 @@ const { User, Game, Transaction, UserGame } = require("../models");
 const { v4: uuidv4 } = require("uuid");
 require("dotenv").config();
 
-// Faqat xabar yuborish uchun bot instansiyasi (Polling kerak emas)
+// Bot instansiyasi (Faqat xabar yuborish uchun)
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false });
-const providerToken = process.env.PROVIDER_TOKEN; // Click/Payme tokeni
+const providerToken = process.env.PROVIDER_TOKEN;
 
-// 1. Invoice yaratish (Frontenddan chaqiriladi)
-exports.createInvoice = async (req, res) => {
+// 1. Invoice yaratish
+const createInvoice = async (req, res) => {
   try {
     const { telegramId, amount, gameId, type } = req.body;
-    // type: 'GAME' yoki 'TOPUP'
 
     if (!telegramId) return res.status(400).json({ msg: "Telegram ID kerak" });
 
@@ -23,14 +22,11 @@ exports.createInvoice = async (req, res) => {
 
       title = `To'lov: ${game.title}`;
       description = `${game.title} o'yini uchun joy band qilish`;
-      // Payload format: TYPE_GAMEID_TELEGRAMID
       payload = `GAME_${gameId}_${telegramId}`;
-      prices = [{ label: game.title, amount: game.price * 100 }]; // Tiyinda
+      prices = [{ label: game.title, amount: game.price * 100 }];
     } else {
-      // Hamyon to'ldirish
       title = "Hamyonni to'ldirish";
       description = "Hisobingizga mablag' qo'shish";
-      // Payload format: TYPE_TELEGRAMID
       payload = `TOPUP_${telegramId}`;
       prices = [{ label: "Balans", amount: amount * 100 }];
     }
@@ -52,8 +48,8 @@ exports.createInvoice = async (req, res) => {
   }
 };
 
-// 2. Hamyon (Wallet) orqali to'lash
-exports.payWithWallet = async (req, res) => {
+// 2. Hamyon orqali to'lash
+const payWithWallet = async (req, res) => {
   try {
     const { telegramId, gameId } = req.body;
 
@@ -67,22 +63,18 @@ exports.payWithWallet = async (req, res) => {
       return res.status(400).json({ msg: "Mablag' yetarli emas" });
     }
 
-    // 1. Balansdan ayirish
     await user.update({ balance: user.balance - game.price });
 
-    // 2. UserGame ga qo'shish (O'yinga yozish)
     await UserGame.create({
       userId: user.id,
       gameId: game.id,
       status: "paid",
       paymentAmount: game.price,
-      team: "A", // Default team
+      team: "A",
     });
 
-    // 3. O'yin o'yinchilar sonini oshirish
     await game.increment("playersJoined");
 
-    // 4. Tarixga yozish
     await Transaction.create({
       userId: user.id,
       amount: game.price,
@@ -98,17 +90,16 @@ exports.payWithWallet = async (req, res) => {
   }
 };
 
-// 3. User ma'lumotlari (Profile uchun)
-exports.getUserWallet = async (req, res) => {
+// 3. User profilini olish (Wallet va Tarix)
+const getUserWallet = async (req, res) => {
   try {
     const { telegramId } = req.params;
     let user = await User.findOne({
       where: { telegramId },
-      include: ["transactions"],
+      include: [{ model: Transaction, as: "transactions" }], // Alias 'as' model bilan mos bo'lishi kerak
     });
 
     if (user && !user.walletCardNumber) {
-      // Unikal karta raqami yaratish: GF-XXXX-XXXX
       const uniqueNum =
         "GF-" +
         uuidv4().split("-")[0].toUpperCase() +
@@ -118,6 +109,14 @@ exports.getUserWallet = async (req, res) => {
     }
     res.json(user);
   } catch (error) {
+    console.error("Get Wallet Error:", error);
     res.status(500).json({ msg: error.message });
   }
+};
+
+// --- HAMMASINI EKSPORT QILISH (ENG MUHIM QISM) ---
+module.exports = {
+  createInvoice,
+  payWithWallet,
+  getUserWallet,
 };
