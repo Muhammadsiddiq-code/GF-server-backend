@@ -198,19 +198,22 @@ const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const TelegramBot = require("node-telegram-bot-api");
+const { v4: uuidv4 } = require("uuid"); // ID generatsiya uchun
 
 // 1. Modellarni import qilish
 const { sequelize, User, Game, UserGame, Transaction } = require("./models");
 const setupSwagger = require("./swagger/swagger");
 
-// Route importlari
+// 2. Controllerlarni import qilish
+const authController = require("./controllers/auth.controller");
+const serviceController = require("./controllers/service.controller");
+
+// 3. Route importlari
 const swiperRoutes = require("./routes/swiper.routes");
 const gameRoutes = require("./routes/games.routes");
 const userRoutes = require("./routes/user.routes");
 const userGameRoutes = require("./routes/userGame.routes");
 const paymentRoutes = require("./routes/payment.routes");
-
-const authController = require("./controllers/auth.controller");
 
 dotenv.config();
 
@@ -232,13 +235,11 @@ app.use("/api/users", userRoutes);
 app.use("/api/user-game", userGameRoutes);
 app.use("/api/payment", paymentRoutes);
 
-
-
-// Auth & Service Routes
+// Auth Route
 app.post("/api/auth/login", authController.login);
 
-const serviceController = require("./controllers/service.controller");
-const serviceRouter = require("express").Router();
+// Service Routes
+const serviceRouter = express.Router();
 serviceRouter.post("/", serviceController.createService);
 serviceRouter.get("/", serviceController.getAllServices);
 serviceRouter.delete("/:id", serviceController.deleteService);
@@ -255,7 +256,9 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 let bot;
 
 if (!token) {
-  console.error("❌ XATOLIK: TELEGRAM_BOT_TOKEN topilmadi!");
+  console.error(
+    "❌ XATOLIK: TELEGRAM_BOT_TOKEN topilmadi! .env faylni tekshiring."
+  );
 } else {
   // 1. Botni ishga tushirish
   if (process.env.RAILWAY_PUBLIC_DOMAIN) {
@@ -285,7 +288,7 @@ if (!token) {
   // 3. Muvaffaqiyatli to'lov (Successful Payment)
   bot.on("successful_payment", async (msg) => {
     const payment = msg.successful_payment;
-    const payload = payment.invoice_payload; // Masalan: "GAME_5_12345678"
+    const payload = payment.invoice_payload;
     const amountSum = payment.total_amount / 100; // Tiyindan so'mga
 
     try {
@@ -294,7 +297,7 @@ if (!token) {
 
       if (type === "GAME") {
         const gameId = parts[1];
-        const telegramId = parts[2]; // String
+        const telegramId = parts[2];
 
         // Bazadan foydalanuvchini topamiz
         const user = await User.findOne({ where: { telegramId: telegramId } });
@@ -332,22 +335,21 @@ if (!token) {
         const user = await User.findOne({ where: { telegramId: telegramId } });
 
         if (user) {
-          // Balansni yangilash (Eski balans + yangi summa)
+          // Balansni yangilash
           const newBalance = parseFloat(user.balance || 0) + amountSum;
           await user.update({ balance: newBalance });
 
-          // Karta raqami yo'q bo'lsa yaratamiz (ixtiyoriy check)
+          // Karta raqami yo'q bo'lsa yaratamiz
           if (!user.walletCardNumber) {
-            const { v4: uuidv4 } = require("uuid");
             const cardNum = "GF-" + uuidv4().split("-")[0].toUpperCase();
             await user.update({ walletCardNumber: cardNum });
           }
 
-          // Tranzaksiya tarixi
+          // Tranzaksiya tarixi (Kirim)
           await Transaction.create({
             userId: user.id,
             amount: amountSum,
-            type: "income", // Bu KIRIM
+            type: "income",
             description: "Hamyon to'ldirildi",
             paymentMethod: "telegram_payment",
           });
@@ -360,7 +362,6 @@ if (!token) {
       }
     } catch (err) {
       console.error("❌ To'lovda xatolik:", err);
-      // Ixtiyoriy: xatolik haqida userga xabar berish
       bot.sendMessage(
         msg.chat.id,
         "To'lov qabul qilindi, lekin tizimda xatolik bo'ldi. Admin bilan bog'laning."
@@ -374,11 +375,11 @@ if (!token) {
 // ------------------------------------------------------------------
 
 sequelize
-  .sync({ alter: true }) // 'alter: true' yangi ustunlarni qo'shadi, ma'lumotni o'chirmaydi
+  .sync({ alter: true })
   .then(async () => {
     console.log("✅ Database muvaffaqiyatli ulandi");
 
-    // Admin (kolizey) yaratish logikasi
+    // Admin (kolizey) yaratish
     try {
       const adminExists = await User.findOne({
         where: { username: "kolizey" },
