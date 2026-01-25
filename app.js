@@ -405,7 +405,7 @@ if (!token) {
 
 // XATOLIKNI TUZATISH UCHUN BIR MARTA FORCE: TRUE QILAMIZ
 sequelize
-  .sync({ force: true })
+  .sync({ alter: true })
   .then(async () => {
     console.log("✅ Database tozalandi va qayta ulandi (Fixing JSONB error)");
 
