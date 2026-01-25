@@ -35,20 +35,36 @@
 
 module.exports = (sequelize, DataTypes) => {
   const UserGame = sequelize.define("UserGame", {
-    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
     userId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: { model: "users", key: "id" }, // Users jadvalidagi DB ID ga bog'lanadi
+      references: {
+        model: "Users", // Bazadagi jadval nomi (odatda ko'plikda bo'ladi)
+        key: "id",
+      },
     },
     gameId: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      references: { model: "games", key: "id" },
     },
-    team: { type: DataTypes.ENUM("A", "B"), defaultValue: "A" },
-    status: { type: DataTypes.STRING, defaultValue: "pending" },
-    paymentAmount: { type: DataTypes.FLOAT, defaultValue: 0 },
+    team: {
+      type: DataTypes.STRING,
+      defaultValue: "A",
+    },
+    status: {
+      type: DataTypes.STRING,
+      defaultValue: "signed_up", // yoki 'paid'
+    },
+    paymentAmount: {
+      type: DataTypes.FLOAT,
+      defaultValue: 0,
+    },
   });
+
   return UserGame;
 };

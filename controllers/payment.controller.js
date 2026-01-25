@@ -3,7 +3,7 @@ const { User, Game, Transaction, UserGame } = require("../models");
 const { v4: uuidv4 } = require("uuid");
 require("dotenv").config();
 
-// Bot instansiyasi (Faqat xabar yuborish uchun)
+// Botni faqat xabar yuborish uchun chaqiramiz
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false });
 const providerToken = process.env.PROVIDER_TOKEN;
 
@@ -14,7 +14,7 @@ const createInvoice = async (req, res) => {
 
     if (!telegramId) return res.status(400).json({ msg: "Telegram ID kerak" });
 
-    // MUHIM: Telegram ID ni stringga o'tkazamiz
+    // MUHIM: Stringga o'tkazish
     const tgIdString = String(telegramId);
 
     let title, description, payload, prices;
@@ -55,54 +55,73 @@ const createInvoice = async (req, res) => {
 const payWithWallet = async (req, res) => {
   try {
     const { telegramId, gameId, amount } = req.body;
+    console.log("Wallet Pay Request:", req.body);
 
-    // XATOLIK SABABI SHU YERDA EDI: String() ga o'tkazish shart
-    const user = await User.findOne({
-      where: { telegramId: String(telegramId) },
-    });
+    if (!telegramId) {
+      return res.status(400).json({ msg: "Telegram ID topilmadi" });
+    }
+
+    // 1. Xatolikni oldini olish uchun Stringga o'tkazamiz
+    const tgIdString = String(telegramId);
+
+    // 2. Userni qidirish
+    const user = await User.findOne({ where: { telegramId: tgIdString } });
     const game = await Game.findByPk(gameId);
 
-    if (!user || !game)
-      return res.status(404).json({ msg: "User yoki O'yin topilmadi" });
+    if (!user) {
+      return res
+        .status(404)
+        .json({
+          msg: "Foydalanuvchi bazadan topilmadi. Iltimos qayta ro'yxatdan o'ting.",
+        });
+    }
+    if (!game) {
+      return res.status(404).json({ msg: "O'yin topilmadi" });
+    }
 
-    // Summani tekshirish (Agar amount frontenddan kelmasa, game.price olinadi)
+    // 3. Balansni tekshirish
     const payAmount = amount ? parseFloat(amount) : game.price;
 
     if (user.balance < payAmount) {
-      return res.status(400).json({ msg: "Mablag' yetarli emas" });
+      return res
+        .status(400)
+        .json({ msg: "Hisobingizda mablag' yetarli emas." });
     }
 
-    // Balansdan ayirish
+    // 4. Tranzaksiya boshlash (Barcha ishlar bir vaqtda bajarilishi uchun)
+    // Agar Transaction ishlatmasak ham ketma-ketlikni to'g'rilaymiz:
+
+    // A. User balansini yangilash
     await user.update({ balance: user.balance - payAmount });
 
-    // UserGame ga yozish
+    // B. UserGame yaratish (User ID integer formatda ketadi)
     await UserGame.create({
-      userId: user.id,
+      userId: user.id, // Bu yerda Userning ID si (1, 2, 5...) ketadi
       gameId: game.id,
       status: "paid",
       paymentAmount: payAmount,
       team: "A",
     });
 
-    // O'yinchi sonini oshirish
+    // C. O'yinchi sonini oshirish
     await game.increment("playersJoined");
 
-    // Tarixga yozish
+    // D. Tarixga yozish
     await Transaction.create({
       userId: user.id,
       amount: payAmount,
       type: "expense",
-      description: `${game.title} (Hamyon orqali)`,
+      description: `${game.title} (Hamyon to'lovi)`,
       paymentMethod: "wallet",
     });
 
     res.json({
       success: true,
-      message: "To'lov muvaffaqiyatli amalga oshirildi",
+      message: "To'lov muvaffaqiyatli amalga oshirildi!",
     });
   } catch (error) {
     console.error("Wallet Pay Error:", error);
-    res.status(500).json({ msg: error.message });
+    res.status(500).json({ msg: "Server xatosi: " + error.message });
   }
 };
 
@@ -110,13 +129,14 @@ const payWithWallet = async (req, res) => {
 const getUserWallet = async (req, res) => {
   try {
     const { telegramId } = req.params;
+    const tgIdString = String(telegramId);
 
-    // Bu yerda ham String() qilamiz
     let user = await User.findOne({
-      where: { telegramId: String(telegramId) },
+      where: { telegramId: tgIdString },
       include: [{ model: Transaction, as: "transactions" }],
     });
 
+    // Agar user topilsa-yu, karta raqami bo'lmasa
     if (user && !user.walletCardNumber) {
       const uniqueNum =
         "GF-" +
