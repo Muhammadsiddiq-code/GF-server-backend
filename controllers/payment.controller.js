@@ -14,6 +14,9 @@ const createInvoice = async (req, res) => {
 
     if (!telegramId) return res.status(400).json({ msg: "Telegram ID kerak" });
 
+    // MUHIM: Telegram ID ni stringga o'tkazamiz
+    const tgIdString = String(telegramId);
+
     let title, description, payload, prices;
 
     if (type === "GAME") {
@@ -22,17 +25,17 @@ const createInvoice = async (req, res) => {
 
       title = `To'lov: ${game.title}`;
       description = `${game.title} o'yini uchun joy band qilish`;
-      payload = `GAME_${gameId}_${telegramId}`;
-      prices = [{ label: game.title, amount: game.price * 100 }];
+      payload = `GAME_${gameId}_${tgIdString}`;
+      prices = [{ label: game.title, amount: parseInt(amount) * 100 }];
     } else {
       title = "Hamyonni to'ldirish";
       description = "Hisobingizga mablag' qo'shish";
-      payload = `TOPUP_${telegramId}`;
-      prices = [{ label: "Balans", amount: amount * 100 }];
+      payload = `TOPUP_${tgIdString}`;
+      prices = [{ label: "Balans", amount: parseInt(amount) * 100 }];
     }
 
     await bot.sendInvoice(
-      telegramId,
+      tgIdString,
       title,
       description,
       payload,
@@ -48,55 +51,70 @@ const createInvoice = async (req, res) => {
   }
 };
 
-// 2. Hamyon orqali to'lash
+// 2. Hamyon orqali to'lash (WALLET PAY)
 const payWithWallet = async (req, res) => {
   try {
-    const { telegramId, gameId } = req.body;
+    const { telegramId, gameId, amount } = req.body;
 
-    const user = await User.findOne({ where: { telegramId } });
+    // XATOLIK SABABI SHU YERDA EDI: String() ga o'tkazish shart
+    const user = await User.findOne({
+      where: { telegramId: String(telegramId) },
+    });
     const game = await Game.findByPk(gameId);
 
     if (!user || !game)
       return res.status(404).json({ msg: "User yoki O'yin topilmadi" });
 
-    if (user.balance < game.price) {
+    // Summani tekshirish (Agar amount frontenddan kelmasa, game.price olinadi)
+    const payAmount = amount ? parseFloat(amount) : game.price;
+
+    if (user.balance < payAmount) {
       return res.status(400).json({ msg: "Mablag' yetarli emas" });
     }
 
-    await user.update({ balance: user.balance - game.price });
+    // Balansdan ayirish
+    await user.update({ balance: user.balance - payAmount });
 
+    // UserGame ga yozish
     await UserGame.create({
       userId: user.id,
       gameId: game.id,
       status: "paid",
-      paymentAmount: game.price,
+      paymentAmount: payAmount,
       team: "A",
     });
 
+    // O'yinchi sonini oshirish
     await game.increment("playersJoined");
 
+    // Tarixga yozish
     await Transaction.create({
       userId: user.id,
-      amount: game.price,
+      amount: payAmount,
       type: "expense",
       description: `${game.title} (Hamyon orqali)`,
       paymentMethod: "wallet",
     });
 
-    res.json({ success: true, message: "To'lov qabul qilindi" });
+    res.json({
+      success: true,
+      message: "To'lov muvaffaqiyatli amalga oshirildi",
+    });
   } catch (error) {
     console.error("Wallet Pay Error:", error);
     res.status(500).json({ msg: error.message });
   }
 };
 
-// 3. User profilini olish (Wallet va Tarix)
+// 3. User profilini olish
 const getUserWallet = async (req, res) => {
   try {
     const { telegramId } = req.params;
+
+    // Bu yerda ham String() qilamiz
     let user = await User.findOne({
-      where: { telegramId },
-      include: [{ model: Transaction, as: "transactions" }], // Alias 'as' model bilan mos bo'lishi kerak
+      where: { telegramId: String(telegramId) },
+      include: [{ model: Transaction, as: "transactions" }],
     });
 
     if (user && !user.walletCardNumber) {
@@ -114,7 +132,6 @@ const getUserWallet = async (req, res) => {
   }
 };
 
-// --- HAMMASINI EKSPORT QILISH (ENG MUHIM QISM) ---
 module.exports = {
   createInvoice,
   payWithWallet,
