@@ -371,6 +371,7 @@ const getUserWallet = async (req, res) => {
     res.json(user);
   } catch (error) {
     res.status(500).json({ msg: error.message });
+    
   }
 };
 
