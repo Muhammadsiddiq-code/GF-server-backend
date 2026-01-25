@@ -76,16 +76,18 @@
 
 
 
-
 const { Game, User, UserGame, Transaction, sequelize } = require("../models");
 
-// 1. BALANSDAN TO'LASH (PAY FROM BALANCE)
+// --- HAMYONDAN TO'LASH (ASOSIY MANTIQ) ---
 exports.payFromBalance = async (req, res) => {
+  // Tranzaksiya ochamiz (pul yechilib, lekin o'yinga qo'shilmay qolishini oldini olish uchun)
   const t = await sequelize.transaction();
-  try {
-    const { userId, gameId } = req.body; // userId = Telegram ID (7116193043)
 
-    // 1. Foydalanuvchini Telegram ID orqali bazadan qidiramiz
+  try {
+    const { userId, gameId } = req.body;
+    // userId - bu Telegram ID (Frontenddan keladi)
+
+    // 1. Foydalanuvchi va O'yinni topamiz
     const user = await User.findOne({
       where: { telegramId: String(userId) },
       transaction: t,
@@ -96,86 +98,113 @@ exports.payFromBalance = async (req, res) => {
       await t.rollback();
       return res
         .status(404)
-        .json({ message: "Foydalanuvchi topilmadi. Profilingizni oching." });
-    }
-    if (!game) {
-      await t.rollback();
-      return res.status(404).json({ message: "O'yin topilmadi" });
-    }
-
-    // 2. Narxni hisoblash
-    const paymentAmount =
-      game.advance > 0
-        ? parseFloat(game.advance)
-        : Math.floor(parseFloat(game.price) * 0.3);
-
-    // 3. Balansni tekshirish
-    if (parseFloat(user.balance || 0) < paymentAmount) {
-      await t.rollback();
-      return res
-        .status(400)
         .json({
-          message: `Mablag' yetarli emas. Balans: ${user.balance} so'm`,
+          message: "Foydalanuvchi topilmadi. Iltimos, ro'yxatdan o'ting.",
         });
     }
 
-    // 4. Bazadagi haqiqiy ID orqali UserGame yaratamiz (FOREIGN KEY HATOSINI YO'QOTADI)
+    if (!game) {
+      await t.rollback();
+      return res.status(404).json({ message: "O'yin topilmadi." });
+    }
+
+    // 2. O'yin to'lib qolmaganini tekshiramiz
+    if (game.playersJoined >= game.totalPlayers) {
+      await t.rollback();
+      return res.status(400).json({ message: "O'yinda joylar qolmadi!" });
+    }
+
+    // 3. Foydalanuvchi allaqachon qo'shilganmi?
+    const existingEntry = await UserGame.findOne({
+      where: { userId: user.id, gameId: game.id },
+      transaction: t,
+    });
+
+    if (existingEntry) {
+      await t.rollback();
+      return res
+        .status(400)
+        .json({ message: "Siz allaqachon bu o'yinga qo'shilgansiz!" });
+    }
+
+    // 4. To'lov summasini aniqlash
+    // Agar o'yinda 'advance' (zaklad) belgilangan bo'lsa, o'shani yechamiz, bo'lmasa to'liq narxni.
+    const paymentAmount =
+      game.advance > 0 ? parseFloat(game.advance) : parseFloat(game.price);
+
+    // 5. Balans yetarliligini tekshirish
+    if (parseFloat(user.balance) < paymentAmount) {
+      await t.rollback();
+      return res.status(400).json({
+        message: `Hisobingizda mablag' yetarli emas. Kerak: ${paymentAmount} so'm`,
+      });
+    }
+
+    // 6. Pulni yechish va O'yinga qo'shish (Barchasi bir vaqtda)
+
+    // a) UserGame jadvaliga yozish
     await UserGame.create(
       {
-        userId: user.id, // <--- Telegram ID emas, bazadagi ID (masalan: 12)
+        userId: user.id,
         gameId: game.id,
-        status: "paid_balance",
+        status: "paid", // To'langan statusi
         paymentAmount: paymentAmount,
-        team: "A",
+        team: "A", // Hozircha default A jamoaga tushadi (keyin o'zgartirish mumkin)
       },
       { transaction: t }
     );
 
-    // 5. Balansni yangilash
+    // b) Balansdan ayirish
     await user.update(
-      { balance: parseFloat(user.balance) - paymentAmount },
+      {
+        balance: parseFloat(user.balance) - paymentAmount,
+      },
       { transaction: t }
     );
+
+    // c) O'yin ishtirokchilar sonini oshirish (+1)
     await game.increment("playersJoined", { transaction: t });
 
-    // 6. Tarixga yozish (Bazadagi user.id bilan)
+    // d) Tarixga (Transaction) yozish
     await Transaction.create(
       {
         userId: user.id,
         amount: paymentAmount,
-        type: "expense",
-        description: `${game.title} (Hamyondan)`,
+        type: "expense", // Chiqim
+        description: `${game.title} o'yini uchun to'lov`,
         paymentMethod: "wallet",
       },
       { transaction: t }
     );
 
+    // Muvaffaqiyatli yakunlash
     await t.commit();
-    res.json({ message: "To'lov muvaffaqiyatli!", newBalance: user.balance });
+
+    return res.status(200).json({
+      message: "To'lov muvaffaqiyatli amalga oshirildi! O'yinga qo'shildingiz.",
+      newBalance: parseFloat(user.balance) - paymentAmount,
+    });
   } catch (error) {
+    // Xatolik bo'lsa, barcha o'zgarishlarni bekor qilish
     await t.rollback();
-    console.error("Pay Error:", error);
-    res.status(500).json({ message: "Xatolik: " + error.message });
+    console.error("PayFromBalance Error:", error);
+    return res.status(500).json({ message: "Server xatosi: " + error.message });
   }
 };
 
-// 2. TARIXNI OLISH (500 XATOSINI TUZATISH)
-exports.getHistory = async (req, res) => {
+// --- PAYME/CLICK INVOICE YARATISH (TEST REJIM UCHUN) ---
+exports.createInvoice = async (req, res) => {
+  // Bu qism faqat test rejimida link qaytarishi kerak
   try {
-    const { telegramId } = req.query;
-    // Avval Telegram ID orqali user.id ni aniqlaymiz
-    const user = await User.findOne({
-      where: { telegramId: String(telegramId) },
-    });
+    const { provider } = req.body;
+    // Haqiqiy Payme/Click ulaganingizda bu yerga url generatsiya qilish kodini yozasiz
+    // Hozircha shunchaki "FAKE" link qaytaramiz frontend ishlashi uchun
 
-    if (!user) return res.json([]); // Foydalanuvchi topilmasa bo'sh ro'yxat
+    const fakeUrl =
+      provider === "click" ? "https://click.uz" : "https://payme.uz";
 
-    const history = await Transaction.findAll({
-      where: { userId: user.id }, // Bazadagi tartib raqami bo'yicha qidiramiz
-      order: [["createdAt", "DESC"]],
-    });
-    res.json(history);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.json({ url: fakeUrl });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
   }
 };
