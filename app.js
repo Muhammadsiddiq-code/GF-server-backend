@@ -2,12 +2,18 @@
 // const dotenv = require("dotenv");
 // const cors = require("cors");
 // const TelegramBot = require("node-telegram-bot-api");
+// const { v4: uuidv4 } = require("uuid");
 
 // // 1. Modellarni import qilish
 // const { sequelize, User, Game, UserGame, Transaction } = require("./models");
 // const setupSwagger = require("./swagger/swagger");
 
-// // Route importlari
+// // 2. Controllerlarni import qilish
+// const authController = require("./controllers/auth.controller");
+// const serviceController = require("./controllers/service.controller");
+// const userController = require("./controllers/user.controller"); // User controller kerak
+
+// // 3. Route importlari
 // const swiperRoutes = require("./routes/swiper.routes");
 // const gameRoutes = require("./routes/games.routes");
 // const userRoutes = require("./routes/user.routes");
@@ -19,7 +25,6 @@
 // const app = express();
 // const PORT = process.env.PORT || 8080;
 
-// // Railway va NGROK uchun
 // app.set("trust proxy", true);
 
 // // Middlewares
@@ -34,12 +39,11 @@
 // app.use("/api/user-game", userGameRoutes);
 // app.use("/api/payment", paymentRoutes);
 
-// // Auth & Service Routes
-// const authController = require("./controllers/auth.controller");
+// // Auth Route
 // app.post("/api/auth/login", authController.login);
 
-// const serviceController = require("./controllers/service.controller");
-// const serviceRouter = require("express").Router();
+// // Service Routes
+// const serviceRouter = express.Router();
 // serviceRouter.post("/", serviceController.createService);
 // serviceRouter.get("/", serviceController.getAllServices);
 // serviceRouter.delete("/:id", serviceController.deleteService);
@@ -49,7 +53,7 @@
 // setupSwagger(app);
 
 // // ------------------------------------------------------------------
-// // --- TELEGRAM BOT LOGIKASI (WEBHOOK & PAYMENTS) ---
+// // --- TELEGRAM BOT LOGIKASI ---
 // // ------------------------------------------------------------------
 
 // const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -58,7 +62,6 @@
 // if (!token) {
 //   console.error("❌ XATOLIK: TELEGRAM_BOT_TOKEN topilmadi!");
 // } else {
-//   // 1. Botni ishga tushirish (Conflict oldini olish uchun)
 //   if (process.env.RAILWAY_PUBLIC_DOMAIN) {
 //     bot = new TelegramBot(token, { webHook: true });
 //     const url = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
@@ -74,7 +77,6 @@
 //     console.log("🤖 Bot Polling (Local) rejimida ulandi");
 //   }
 
-//   // 2. To'lovdan oldin tekshiruv (Pre-checkout)
 //   bot.on("pre_checkout_query", async (query) => {
 //     try {
 //       await bot.answerPreCheckoutQuery(query.id, true);
@@ -94,15 +96,19 @@
 
 //       if (type === "GAME") {
 //         const gameId = parts[1];
-//         const telegramId = String(parts[2]);
+//         const telegramId = parts[2]; // String ID
 
-//         // Bazadan foydalanuvchini topamiz
-//         const user = await User.findOne({ where: { telegramId: telegramId } });
+//         const user = await User.findOne({
+//           where: { telegramId: String(telegramId) },
+//         });
+
 //         if (user) {
-//           // user.id (tartib raqami) orqali UserGame yaratish
-//           await UserGame.findOrCreate({
-//             where: { userId: user.id, gameId: gameId },
-//             defaults: { status: "paid", paymentAmount: amountSum, team: "A" },
+//           await UserGame.create({
+//             userId: user.id,
+//             gameId: gameId,
+//             status: "paid",
+//             paymentAmount: amountSum,
+//             team: "A",
 //           });
 
 //           const game = await Game.findByPk(gameId);
@@ -112,19 +118,30 @@
 //             userId: user.id,
 //             amount: amountSum,
 //             type: "expense",
-//             description: `${game?.title || "O'yin"} uchun to'lov (Telegram)`,
+//             description: `${game?.title || "O'yin"} uchun to'lov (Karta)`,
 //             paymentMethod: "telegram_payment",
 //           });
 
-//           await bot.sendMessage(msg.chat.id, "✅ To'lov qabul qilindi!");
+//           await bot.sendMessage(
+//             msg.chat.id,
+//             `✅ To'lov qabul qilindi! Siz ${game?.title} o'yiniga yozildingiz.`
+//           );
 //         }
 //       } else if (type === "TOPUP") {
-//         const telegramId = String(parts[1]);
-//         const user = await User.findOne({ where: { telegramId: telegramId } });
+//         const telegramId = parts[1]; // String ID
+//         const user = await User.findOne({
+//           where: { telegramId: String(telegramId) },
+//         });
+
 //         if (user) {
-//           await user.update({
-//             balance: parseFloat(user.balance || 0) + amountSum,
-//           });
+//           const newBalance = parseFloat(user.balance || 0) + amountSum;
+//           await user.update({ balance: newBalance });
+
+//           if (!user.walletCardNumber) {
+//             const cardNum = "GF-" + uuidv4().split("-")[0].toUpperCase();
+//             await user.update({ walletCardNumber: cardNum });
+//           }
+
 //           await Transaction.create({
 //             userId: user.id,
 //             amount: amountSum,
@@ -132,7 +149,11 @@
 //             description: "Hamyon to'ldirildi",
 //             paymentMethod: "telegram_payment",
 //           });
-//           await bot.sendMessage(msg.chat.id, "✅ Balans to'ldirildi!");
+
+//           await bot.sendMessage(
+//             msg.chat.id,
+//             `✅ Balans to'ldirildi! Hisobingizda: ${newBalance} so'm.`
+//           );
 //         }
 //       }
 //     } catch (err) {
@@ -141,16 +162,18 @@
 //   });
 // }
 
+// // ... tepadagi kodlar ...
+
 // // ------------------------------------------------------------------
 // // --- DB Sync & Server Start ---
 // // ------------------------------------------------------------------
 
 // sequelize
-//   .sync({ alter: true }) // Yangi ustunlarni (status, balance) qo'shish uchun
+//   .sync({ alter: true }) // <--- "force" ni "alter" ga o'zgartirdim. Endi ma'lumot o'chmaydi!
 //   .then(async () => {
 //     console.log("✅ Database muvaffaqiyatli ulandi");
 
-//     // Admin (kolizey) yaratish logikasi
+//     // Admin yaratish (faqat yo'q bo'lsa yaratadi)
 //     try {
 //       const adminExists = await User.findOne({
 //         where: { username: "kolizey" },
@@ -160,7 +183,7 @@
 //           firstName: "Muhammad Siddiq",
 //           lastName: "Xamidullayev",
 //           username: "kolizey",
-//           password: "55775577",
+//           password: "55775577", // Agar password ishlatayotgan bo'lsangiz
 //           role: "admin",
 //           phone: "+998 97 827-55-77",
 //           xp: 99999,
@@ -171,7 +194,7 @@
 //         console.log("🔥 Admin 'kolizey' yaratildi!");
 //       }
 //     } catch (e) {
-//       console.log("⚠️ Admin yaratishda xato:", e.message);
+//       console.log("⚠️ Admin tekshirishda xato:", e.message);
 //     }
 
 //     app.listen(PORT, "0.0.0.0", () => {
@@ -194,6 +217,26 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
@@ -204,10 +247,10 @@ const { v4: uuidv4 } = require("uuid");
 const { sequelize, User, Game, UserGame, Transaction } = require("./models");
 const setupSwagger = require("./swagger/swagger");
 
-// 2. Controllerlarni import qilish
+// 2. Controllerlar
 const authController = require("./controllers/auth.controller");
 const serviceController = require("./controllers/service.controller");
-const userController = require("./controllers/user.controller"); // User controller kerak
+const userController = require("./controllers/user.controller");
 
 // 3. Route importlari
 const swiperRoutes = require("./routes/swiper.routes");
@@ -223,7 +266,6 @@ const PORT = process.env.PORT || 8080;
 
 app.set("trust proxy", true);
 
-// Middlewares
 app.use(express.json());
 app.use(cors({ origin: "*" }));
 app.options("*", cors());
@@ -235,21 +277,18 @@ app.use("/api/users", userRoutes);
 app.use("/api/user-game", userGameRoutes);
 app.use("/api/payment", paymentRoutes);
 
-// Auth Route
 app.post("/api/auth/login", authController.login);
 
-// Service Routes
 const serviceRouter = express.Router();
 serviceRouter.post("/", serviceController.createService);
 serviceRouter.get("/", serviceController.getAllServices);
 serviceRouter.delete("/:id", serviceController.deleteService);
 app.use("/api/services", serviceRouter);
 
-// Swagger
 setupSwagger(app);
 
 // ------------------------------------------------------------------
-// --- TELEGRAM BOT LOGIKASI ---
+// --- TELEGRAM BOT ---
 // ------------------------------------------------------------------
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -291,8 +330,10 @@ if (!token) {
       const type = parts[0];
 
       if (type === "GAME") {
+        // Payload formati: GAME_GAMEID_USERID_TEAMNAME
         const gameId = parts[1];
-        const telegramId = parts[2]; // String ID
+        const telegramId = parts[2];
+        const teamName = parts[3] !== "NA" ? parts[3] : "Aniqlanmadi"; // Jamoa nomi
 
         const user = await User.findOne({
           where: { telegramId: String(telegramId) },
@@ -304,7 +345,7 @@ if (!token) {
             gameId: gameId,
             status: "paid",
             paymentAmount: amountSum,
-            team: "A",
+            team: teamName, // Bot orqali to'laganda ham jamoa yoziladi
           });
 
           const game = await Game.findByPk(gameId);
@@ -314,17 +355,17 @@ if (!token) {
             userId: user.id,
             amount: amountSum,
             type: "expense",
-            description: `${game?.title || "O'yin"} uchun to'lov (Karta)`,
+            description: `${game?.title || "O'yin"} uchun to'lov`,
             paymentMethod: "telegram_payment",
           });
 
           await bot.sendMessage(
             msg.chat.id,
-            `✅ To'lov qabul qilindi! Siz ${game?.title} o'yiniga yozildingiz.`
+            `✅ To'lov qabul qilindi! Siz ${game?.title} o'yiniga qo'shildingiz.`
           );
         }
       } else if (type === "TOPUP") {
-        const telegramId = parts[1]; // String ID
+        const telegramId = parts[1];
         const user = await User.findOne({
           where: { telegramId: String(telegramId) },
         });
@@ -358,18 +399,17 @@ if (!token) {
   });
 }
 
-// ... tepadagi kodlar ...
-
 // ------------------------------------------------------------------
 // --- DB Sync & Server Start ---
 // ------------------------------------------------------------------
 
+// XATOLIKNI TUZATISH UCHUN BIR MARTA FORCE: TRUE QILAMIZ
 sequelize
-  .sync({ alter: true }) // <--- "force" ni "alter" ga o'zgartirdim. Endi ma'lumot o'chmaydi!
+  .sync({ force: true })
   .then(async () => {
-    console.log("✅ Database muvaffaqiyatli ulandi");
+    console.log("✅ Database tozalandi va qayta ulandi (Fixing JSONB error)");
 
-    // Admin yaratish (faqat yo'q bo'lsa yaratadi)
+    // Admin yaratish
     try {
       const adminExists = await User.findOne({
         where: { username: "kolizey" },
@@ -379,7 +419,7 @@ sequelize
           firstName: "Muhammad Siddiq",
           lastName: "Xamidullayev",
           username: "kolizey",
-          password: "55775577", // Agar password ishlatayotgan bo'lsangiz
+          password: "55775577",
           role: "admin",
           phone: "+998 97 827-55-77",
           xp: 99999,
@@ -390,7 +430,7 @@ sequelize
         console.log("🔥 Admin 'kolizey' yaratildi!");
       }
     } catch (e) {
-      console.log("⚠️ Admin tekshirishda xato:", e.message);
+      console.log("⚠️ Admin yaratishda info:", e.message);
     }
 
     app.listen(PORT, "0.0.0.0", () => {

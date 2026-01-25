@@ -106,7 +106,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
     },
     playDate: {
-      type: DataTypes.DATEONLY, // Faqat sana
+      type: DataTypes.DATEONLY,
       allowNull: false,
     },
     startTime: {
@@ -124,7 +124,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
     },
     mapUrl: {
-      type: DataTypes.TEXT, // Uzun linklar uchun
+      type: DataTypes.TEXT,
     },
     totalPlayers: {
       type: DataTypes.INTEGER,
@@ -161,7 +161,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-    // --- YANGI QO'SHILGAN USTUNLAR ---
+    // --- YANGI USTUNLAR ---
     team1Name: {
       type: DataTypes.STRING,
       defaultValue: "Jamoa 1",
@@ -181,7 +181,7 @@ module.exports = (sequelize, DataTypes) => {
     mvpPlayer: {
       type: DataTypes.STRING,
     },
-    // Arrayni JSONB sifatida saqlash (Postgres uchun)
+    // MUHIM: JSONB turi
     rules: {
       type: DataTypes.JSONB,
       defaultValue: [],
