@@ -91,6 +91,7 @@
 const { UserGame, Game, User } = require("../models"); // User modelini qo'shdik
 const { Op } = require("sequelize");
 
+
 exports.joinGame = async (req, res) => {
   try {
     const { gameId, userId, team } = req.body; // userId bu yerda bazadagi ID
@@ -125,39 +126,25 @@ exports.joinGame = async (req, res) => {
   }
 };
 
-// 2. Foydalanuvchi Tarixini olish
-exports.getUserHistory = async (req, res) => {
+
+// Foydalanuvchi o'yinlari tarixi
+exports.getUserGameHistory = async (req, res) => {
   try {
     const { userId } = req.params;
 
     const history = await UserGame.findAll({
-      where: { userId },
+      where: { userId: userId },
       include: [
         {
-          model: Game,
-          where: {
-            // Faqat o'tib ketgan o'yinlarni ko'rsatish
-            playDate: { [Op.lt]: new Date() },
-          },
+          model: Game, // O'yin ma'lumotlarini ham qo'shib olamiz
         },
       ],
-      order: [[Game, "playDate", "DESC"]], // Yaqin tarix birinchi
+      order: [["createdAt", "DESC"]], // Eng oxirgi qo'shilganlar tepadaga
     });
 
-    // Frontend formatiga moslash
-    const formattedData = history.map((item) => ({
-      id: item.Game.id,
-      title: item.Game.title,
-      location: item.Game.location,
-      time: item.Game.startTime,
-      date: item.Game.playDate,
-      myTeam: item.team,
-      score: `${item.Game.scoreTeamA || 0} : ${item.Game.scoreTeamB || 0}`,
-      status: "Tugallangan",
-    }));
-
-    res.json(formattedData);
+    res.json(history);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error("History Error:", error);
+    res.status(500).json({ message: error.message });
   }
 };

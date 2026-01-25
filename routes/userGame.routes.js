@@ -123,6 +123,6 @@ router.post("/join", userGameController.joinGame);
  *       500:
  *         description: Server xatosi
  */
-router.get("/history/:userId", userGameController.getUserHistory);
+router.get("/history/:userId", userGameController.getUserGameHistory);
 
 module.exports = router;
