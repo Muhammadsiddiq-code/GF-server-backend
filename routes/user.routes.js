@@ -69,4 +69,8 @@ router.post("/login", userController.loginOrRegister);
 router.get("/all", userController.getAllUsers);
 
 router.post("/update-balance", userController.updateUserBalance);
+
+
+// YANGI ROUTE: Ma'lumotlarni yangilash
+router.put("/:telegramId", userController.updateUser);
 module.exports = router;

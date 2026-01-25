@@ -286,3 +286,38 @@ exports.updateUserBalance = async (req, res) => {
     res.status(500).json({ message: "Server xatosi: " + error.message });
   }
 };
+
+
+
+
+
+
+
+
+
+// ... boshqa funksiyalar ...
+
+// YANGI: User ma'lumotlarini yangilash
+exports.updateUser = async (req, res) => {
+  try {
+    const { telegramId } = req.params; // URL dan olamiz
+    const { phone, city, position } = req.body; // Body dan olamiz
+
+    const user = await User.findOne({ where: { telegramId } });
+    if (!user) {
+      return res.status(404).json({ message: "Foydalanuvchi topilmadi" });
+    }
+
+    // Faqat kelgan ma'lumotlarni yangilaymiz
+    await user.update({
+      phone: phone || user.phone,
+      city: city || user.city,
+      position: position || user.position,
+    });
+
+    res.json({ message: "Muvaffaqiyatli saqlandi", user });
+  } catch (error) {
+    console.error("Update User Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
