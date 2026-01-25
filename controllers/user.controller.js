@@ -237,6 +237,8 @@ exports.getAllUsers = async (req, res) => {
 
 
 
+// ... (boshqa funksiyalar tepada)
+
 // Admin uchun balansni o'zgartirish
 exports.updateBalance = async (req, res) => {
   try {
@@ -245,7 +247,7 @@ exports.updateBalance = async (req, res) => {
     const user = await User.findByPk(userId);
     if (!user) return res.status(404).json({ message: "User topilmadi" });
 
-    let newBalance = user.balance;
+    let newBalance = parseFloat(user.balance || 0);
     const changeAmount = parseFloat(amount);
 
     if (type === 'add') {
@@ -256,14 +258,14 @@ exports.updateBalance = async (req, res) => {
 
     await user.update({ balance: newBalance });
 
-    // Transaction tarixiga yozib qo'yamiz (Admin tomonidan)
-    const { Transaction } = require("../models"); // Agar tepadagi importda bo'lmasa
+    // Transaction tarixiga yozib qo'yamiz (Admin tomonidan o'zgargani bilinishi uchun)
+    const { Transaction } = require("../models"); 
     if(Transaction) {
         await Transaction.create({
             userId: user.id,
             amount: changeAmount,
             type: type === 'add' ? 'income' : 'expense',
-            description: `Admin tomonidan ${type === 'add' ? 'qo\'shildi' : 'ayirildi'}`,
+            description: `Admin tomonidan ${type === 'add' ? "qo'shildi" : "ayirildi"}`,
             paymentMethod: 'admin'
         });
     }

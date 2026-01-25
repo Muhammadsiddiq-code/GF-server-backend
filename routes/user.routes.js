@@ -69,5 +69,4 @@ router.post("/login", userController.loginOrRegister);
 router.get("/all", userController.getAllUsers);
 
 router.post("/update-balance", userController.updateBalance);
-
 module.exports = router;
