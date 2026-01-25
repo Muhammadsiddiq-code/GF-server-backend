@@ -123,6 +123,12 @@ router.post("/join", userGameController.joinGame);
  *       500:
  *         description: Server xatosi
  */
+// User tarixi
 router.get("/history/:userId", userGameController.getUserGameHistory);
 
+// (YANGI) O'yin ishtirokchilari (Admin uchun)
+// Frontend shunga murojaat qiladi: /api/user-game/game/:gameId
+router.get("/game/:gameId", userGameController.getPlayersByGameId);
+
+module.exports = router;
 module.exports = router;

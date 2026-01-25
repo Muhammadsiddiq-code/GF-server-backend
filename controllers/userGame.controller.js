@@ -127,24 +127,42 @@ exports.joinGame = async (req, res) => {
 };
 
 
-// Foydalanuvchi o'yinlari tarixi
+
+// 1. Foydalanuvchining barcha o'yinlari tarixi
 exports.getUserGameHistory = async (req, res) => {
   try {
     const { userId } = req.params;
-
     const history = await UserGame.findAll({
       where: { userId: userId },
+      include: [{ model: Game }],
+      order: [["createdAt", "DESC"]],
+    });
+    res.json(history);
+  } catch (error) {
+    console.error("History Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 2. (YANGI) O'yin bo'yicha barcha ishtirokchilarni olish (Admin uchun)
+exports.getPlayersByGameId = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+
+    const players = await UserGame.findAll({
+      where: { gameId: gameId },
       include: [
         {
-          model: Game, // O'yin ma'lumotlarini ham qo'shib olamiz
+          model: User, // User ma'lumotlarini (Ism, Tel) qo'shib olamiz
+          attributes: ["id", "firstName", "lastName", "phone", "telegramId"],
         },
       ],
       order: [["createdAt", "DESC"]], // Eng oxirgi qo'shilganlar tepadaga
     });
 
-    res.json(history);
+    res.json(players);
   } catch (error) {
-    console.error("History Error:", error);
+    console.error("Get Players Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
