@@ -233,10 +233,8 @@ app.use("/api/user-game", userGameRoutes);
 app.use("/api/payment", paymentRoutes);
 
 
-app.post("/api/auth/login", authController.login);
 
 // Auth & Service Routes
-const authController = require("./controllers/auth.controller");
 app.post("/api/auth/login", authController.login);
 
 const serviceController = require("./controllers/service.controller");
