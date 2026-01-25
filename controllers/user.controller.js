@@ -122,8 +122,6 @@
 
 
 
-const db = require("../models");
-const User = db.User;
 // controllers/user.controller.js
 const { User, Transaction } = require("../models"); // Transaction ni import qilishni unutmang!
 
