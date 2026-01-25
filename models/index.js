@@ -12,38 +12,36 @@
 //   },
 // });
 
-// // Modellarni chaqirish (Endi xato bermaydi!)
-// const User = require("./userModel")(sequelize, DataTypes);
-// const Game = require("./gameModel")(sequelize, DataTypes);
-// const UserGame = require("./UserGame")(sequelize, DataTypes);
-// const Swiper = require("./swiper")(sequelize, DataTypes);
+// const db = {}; // Hamma modellarni shu ob'ektga yig'amiz
+
+// db.Sequelize = Sequelize;
+// db.sequelize = sequelize;
+
+// // Modellarni yuklash
+// db.User = require("./userModel")(sequelize, DataTypes);
+// db.Game = require("./gameModel")(sequelize, DataTypes);
+// db.UserGame = require("./UserGame")(sequelize, DataTypes);
+// db.Swiper = require("./swiper")(sequelize, DataTypes);
 
 // // MUNOSABATLAR (RELATIONSHIPS)
-// User.belongsToMany(Game, {
-//   through: UserGame,
+// db.User.belongsToMany(db.Game, {
+//   through: db.UserGame,
 //   foreignKey: "userId",
 //   otherKey: "gameId",
 // });
-// Game.belongsToMany(User, {
-//   through: UserGame,
+// db.Game.belongsToMany(db.User, {
+//   through: db.UserGame,
 //   foreignKey: "gameId",
 //   otherKey: "userId",
 // });
 
-// UserGame.belongsTo(Game, { foreignKey: "gameId" });
-// Game.hasMany(UserGame, { foreignKey: "gameId" });
+// db.UserGame.belongsTo(db.Game, { foreignKey: "gameId" });
+// db.Game.hasMany(db.UserGame, { foreignKey: "gameId" });
 
-// UserGame.belongsTo(User, { foreignKey: "userId" });
-// User.hasMany(UserGame, { foreignKey: "userId" });
+// db.UserGame.belongsTo(db.User, { foreignKey: "userId" });
+// db.User.hasMany(db.UserGame, { foreignKey: "userId" });
 
-// module.exports = {
-//   sequelize,
-//   Sequelize,
-//   User,
-//   Game,
-//   UserGame,
-//   Swiper,
-// };
+// module.exports = db; // Butun boshli 'db' ob'ektini eksport qilamiz
 
 
 
@@ -73,18 +71,21 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
   },
 });
 
-const db = {}; // Hamma modellarni shu ob'ektga yig'amiz
+const db = {};
 
 db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
-// Modellarni yuklash
+// --- MODELLARNI YUKLASH ---
 db.User = require("./userModel")(sequelize, DataTypes);
 db.Game = require("./gameModel")(sequelize, DataTypes);
 db.UserGame = require("./UserGame")(sequelize, DataTypes);
 db.Swiper = require("./swiper")(sequelize, DataTypes);
+db.Transaction = require("./transaction.model")(sequelize, DataTypes); // <-- YANGI: Transaction qo'shildi
 
-// MUNOSABATLAR (RELATIONSHIPS)
+// --- MUNOSABATLAR (RELATIONSHIPS) ---
+
+// User va Game (Many-to-Many)
 db.User.belongsToMany(db.Game, {
   through: db.UserGame,
   foreignKey: "userId",
@@ -96,10 +97,15 @@ db.Game.belongsToMany(db.User, {
   otherKey: "userId",
 });
 
+// UserGame bog'lanishlari
 db.UserGame.belongsTo(db.Game, { foreignKey: "gameId" });
 db.Game.hasMany(db.UserGame, { foreignKey: "gameId" });
 
 db.UserGame.belongsTo(db.User, { foreignKey: "userId" });
 db.User.hasMany(db.UserGame, { foreignKey: "userId" });
 
-module.exports = db; // Butun boshli 'db' ob'ektini eksport qilamiz
+// Transaction bog'lanishlari (YANGI)
+db.User.hasMany(db.Transaction, { foreignKey: "userId" });
+db.Transaction.belongsTo(db.User, { foreignKey: "userId" });
+
+module.exports = db;

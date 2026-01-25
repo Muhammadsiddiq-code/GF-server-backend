@@ -78,18 +78,17 @@
 
 
 const axios = require("axios");
-const { Game, User, UserGame, Transaction, sequelize } = require("../models"); // Transaction ni qo'shing
+const { Game, User, UserGame, Transaction, sequelize } = require("../models"); // Transaction ni to'g'ri import qiling
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-// 1. O'YIN UCHUN INVOICE (Payme/Click orqali to'g'ridan-to'g'ri to'lash)
+// 1. O'YIN UCHUN INVOICE
 exports.createInvoiceLink = async (req, res) => {
   try {
     const { gameId, userId, provider } = req.body;
     const game = await Game.findByPk(gameId);
     if (!game) return res.status(404).json({ message: "O'yin topilmadi" });
 
-    // Zaklad 30%
     const advanceAmount = parseInt(game.price * 0.3);
     const amountInTiyin = advanceAmount * 100;
 
@@ -105,7 +104,7 @@ exports.createInvoiceLink = async (req, res) => {
       {
         title: game.title,
         description: `O'yin uchun zaklad to'lovi (${game.location})`,
-        payload: `GAME_${gameId}_${userId}`, // Farqlash uchun prefiks qo'shdik
+        payload: `GAME_${gameId}_${userId}`,
         provider_token: providerToken,
         currency: "UZS",
         prices: [{ label: "Zaklad (30%)", amount: amountInTiyin }],
@@ -126,12 +125,10 @@ exports.createInvoiceLink = async (req, res) => {
   }
 };
 
-// 2. BALANSNI TO'LDIRISH UCHUN INVOICE (YANGI)
+// 2. BALANSNI TO'LDIRISH UCHUN INVOICE
 exports.createTopUpInvoice = async (req, res) => {
   try {
-    const { userId, amount, provider } = req.body; // amount so'mda keladi
-
-    // Minimal summa tekshiruvi (masalan 1000 so'm)
+    const { userId, amount, provider } = req.body;
     if (amount < 1000)
       return res.status(400).json({ message: "Minimal to'lov 1000 so'm" });
 
@@ -146,11 +143,11 @@ exports.createTopUpInvoice = async (req, res) => {
       {
         title: "Hamyonni to'ldirish",
         description: `GF Hisobingizni ${amount} so'mga to'ldirish`,
-        payload: `TOPUP_${userId}_${amount}`, // Payload: TOPUP_UserTelegramID_Summa
+        payload: `TOPUP_${userId}_${amount}`,
         provider_token: providerToken,
         currency: "UZS",
         prices: [{ label: "Hamyon to'lovi", amount: amountInTiyin }],
-        photo_url: "https://cdn-icons-png.flaticon.com/512/2953/2953363.png", // Wallet icon
+        photo_url: "https://cdn-icons-png.flaticon.com/512/2953/2953363.png",
         need_name: true,
       }
     );
@@ -166,177 +163,104 @@ exports.createTopUpInvoice = async (req, res) => {
   }
 };
 
-// // 3. BALANSDAN TO'LASH (YANGI)
-// exports.payFromBalance = async (req, res) => {
-//   const t = await sequelize.transaction(); // Tranzaksiya boshlaymiz (Xavfsizlik uchun)
-
-//   try {
-//     const { userId, gameId } = req.body; // userId bu TelegramID
-
-//     // User va O'yinni topamiz
-//     const user = await User.findOne({
-//       where: { telegramId: String(userId) },
-//       transaction: t,
-//     });
-//     const game = await Game.findByPk(gameId, { transaction: t });
-
-//     if (!user) {
-//       await t.rollback();
-//       return res.status(404).json({ message: "User topilmadi" });
-//     }
-//     if (!game) {
-//       await t.rollback();
-//       return res.status(404).json({ message: "O'yin topilmadi" });
-//     }
-
-//     // O'yin tugaganmi yoki joy qolmaganmi?
-//     if (game.isFinished || game.playersJoined >= game.totalPlayers) {
-//       await t.rollback();
-//       return res
-//         .status(400)
-//         .json({ message: "Joylar to'lgan yoki o'yin tugagan" });
-//     }
-
-//     // User allaqachon yozilganmi?
-//     const existing = await UserGame.findOne({
-//       where: { userId: user.id, gameId: game.id },
-//       transaction: t,
-//     });
-//     if (existing) {
-//       await t.rollback();
-//       return res.status(400).json({ message: "Siz allaqachon yozilgansiz" });
-//     }
-
-//     // Narxni hisoblash (Zaklad 30%)
-//     // Agar game.advance bo'lsa o'shani olamiz, bo'lmasa 30%
-//     const paymentAmount =
-//       game.advance > 0 ? game.advance : parseInt(game.price * 0.3);
-
-//     // Balans yetarlimi?
-//     if (user.balance < paymentAmount) {
-//       await t.rollback();
-//       return res.status(400).json({ message: "Balansda mablag' yetarli emas" });
-//     }
-
-//     // 1. Balansdan ayiramiz
-//     await user.update(
-//       { balance: user.balance - paymentAmount },
-//       { transaction: t }
-//     );
-
-//     // 2. UserGame ga yozamiz
-//     await UserGame.create(
-//       {
-//         userId: user.id,
-//         gameId: game.id,
-//         status: "paid_balance",
-//         paymentAmount: paymentAmount,
-//         team: "A",
-//       },
-//       { transaction: t }
-//     );
-
-//     // 3. O'yin statistikasini yangilaymiz
-//     await game.increment("playersJoined", { transaction: t });
-
-//     await t.commit(); // Hammasi muvaffaqiyatli bo'lsa saqlaymiz
-
-//     res.json({
-//       message: "Muvaffaqiyatli to'landi",
-//       newBalance: user.balance - paymentAmount,
-//     });
-//   } catch (error) {
-//     await t.rollback(); // Xato bo'lsa hammasini bekor qilamiz
-//     console.error("Balance Pay Error:", error);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
-
-
-
-
-
-
-
-
-
-// 3. BALANSDAN TO'LASH (YANGILANDI: Tarixga yozish bilan)
+// 3. BALANSDAN TO'LASH (Transaction bilan)
 exports.payFromBalance = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { userId, gameId } = req.body;
-    const user = await User.findOne({ where: { telegramId: String(userId) }, transaction: t });
+    const user = await User.findOne({
+      where: { telegramId: String(userId) },
+      transaction: t,
+    });
     const game = await Game.findByPk(gameId, { transaction: t });
 
-    if (!user || !game) { await t.rollback(); return res.status(404).json({ message: "Xatolik" }); }
-    
-    // ... (tekshiruvlar: joy bormi, user bormi - eski kod bilan bir xil) ...
-    // Qisqartirib yozaman, eski tekshiruvlaringiz turaversin:
-    if (user.balance < parseInt(game.price * 0.3)) {
-         await t.rollback(); return res.status(400).json({ message: "Mablag' yetarli emas" });
+    if (!user || !game) {
+      await t.rollback();
+      return res.status(404).json({ message: "Ma'lumot topilmadi" });
     }
 
-    const paymentAmount = game.advance > 0 ? game.advance : parseInt(game.price * 0.3);
+    if (game.isFinished || game.playersJoined >= game.totalPlayers) {
+      await t.rollback();
+      return res
+        .status(400)
+        .json({ message: "Joylar to'lgan yoki o'yin tugagan" });
+    }
 
-    // 1. Balansdan ayiramiz
-    await user.update({ balance: user.balance - paymentAmount }, { transaction: t });
+    const existing = await UserGame.findOne({
+      where: { userId: user.id, gameId: game.id },
+      transaction: t,
+    });
+    if (existing) {
+      await t.rollback();
+      return res.status(400).json({ message: "Siz allaqachon yozilgansiz" });
+    }
 
-    // 2. UserGame ga yozamiz
-    await UserGame.create({
+    const paymentAmount =
+      game.advance > 0 ? game.advance : parseInt(game.price * 0.3);
+
+    if (user.balance < paymentAmount) {
+      await t.rollback();
+      return res.status(400).json({ message: "Balansda mablag' yetarli emas" });
+    }
+
+    // 1. Balansdan yechish
+    await user.update(
+      { balance: user.balance - paymentAmount },
+      { transaction: t }
+    );
+
+    // 2. UserGame ga yozish
+    await UserGame.create(
+      {
         userId: user.id,
         gameId: game.id,
         status: "paid_balance",
         paymentAmount: paymentAmount,
-        team: "A"
-    }, { transaction: t });
+        team: "A",
+      },
+      { transaction: t }
+    );
 
-    // 3. O'yin statistikasini yangilaymiz
-    await game.increment('playersJoined', { transaction: t });
+    // 3. O'yin statistikasini yangilash
+    await game.increment("playersJoined", { transaction: t });
 
-    // --- YANGI: TRANZAKSIYA TARIXIGA YOZISH ---
-    await Transaction.create({
+    // 4. TRANZAKSIYA TARIXIGA YOZISH (YANGI)
+    await Transaction.create(
+      {
         userId: user.id,
         amount: paymentAmount,
-        type: 'expense', // Chiqim
+        type: "expense", // Chiqim
         description: `${game.title} o'yini uchun to'lov`,
-        paymentMethod: 'wallet'
-    }, { transaction: t });
-    // ------------------------------------------
+        paymentMethod: "wallet",
+      },
+      { transaction: t }
+    );
 
     await t.commit();
     res.json({ message: "Muvaffaqiyatli to'landi" });
-
   } catch (error) {
     await t.rollback();
     res.status(500).json({ error: error.message });
   }
 };
 
-
-
-
-
-
-
-
-
-
-// 4. TARIXNI OLISH (YANGI FUNKSIYA)
+// 4. TARIXNI OLISH
 exports.getHistory = async (req, res) => {
-    try {
-        const { telegramId } = req.query;
-        const user = await User.findOne({ where: { telegramId } });
-        if(!user) return res.status(404).json({message: "User yo'q"});
+  try {
+    const { telegramId } = req.query;
+    if (!telegramId)
+      return res.status(400).json({ message: "Telegram ID kerak" });
 
-        const history = await Transaction.findAll({
-            where: { userId: user.id },
-            order: [['createdAt', 'DESC']] // Eng yangisi tepada
-        });
+    const user = await User.findOne({ where: { telegramId } });
+    if (!user) return res.status(404).json({ message: "User yo'q" });
 
-        res.json(history);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+    const history = await Transaction.findAll({
+      where: { userId: user.id },
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.json(history);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
-
