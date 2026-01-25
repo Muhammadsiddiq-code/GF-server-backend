@@ -1,211 +1,16 @@
-// // const { Game } = require("../models");
-// // const Joi = require("joi");
-
-// // // // Validatsiya sxemasi
-// // // const gameSchema = Joi.object({
-// // //   title: Joi.string().required(),
-// // //   subtitle: Joi.string().allow(""),
-// // //   location: Joi.string().required(),
-// // //   playDate: Joi.date().required(),
-// // //   startTime: Joi.string().required(),
-// // //   endTime: Joi.string().required(),
-// // //   price: Joi.number().required(),
-// // //   totalPlayers: Joi.number().integer(),
-// // //   playersJoined: Joi.number().integer(),
-// // //   isOutdoor: Joi.boolean(),
-// // //   hasLockers: Joi.boolean(),
-// // //   hasShowers: Joi.boolean(),
-// // //   type: Joi.string(),
-// // //   advance: Joi.number(),
-// // //   imageUrl: Joi.string().uri(),
-// // //   rules: Joi.array().items(Joi.string()),
-// // // });
-
-
-
-
-
-
-
-
-
-
-
-// // // Validatsiya sxemasi
-// // const gameSchema = Joi.object({
-// //   title: Joi.string().required(),
-// //   subtitle: Joi.string().allow(""),
-// //   location: Joi.string().required(),
-// //   playDate: Joi.date().required(),
-// //   startTime: Joi.string().required(),
-// //   endTime: Joi.string().required(),
-// //   price: Joi.number().required(),
-// //   totalPlayers: Joi.number().integer(),
-// //   playersJoined: Joi.number().integer(),
-// //   isOutdoor: Joi.boolean(),
-// //   hasLockers: Joi.boolean(),
-// //   hasShowers: Joi.boolean(),
-// //   type: Joi.string(),
-// //   advance: Joi.number(),
-// //   imageUrl: Joi.string().uri(),
-// //   rules: Joi.array().items(Joi.string()),
-  
-// //   // MANA BU QATORNI QO'SHING:
-// //   isFinished: Joi.boolean(),
-  
-// //   // Kelajakda xato bermasligi uchun bularni ham qo'shib qo'yganingiz ma'qul:
-// //   scoreTeamA: Joi.number().integer(),
-// //   scoreTeamB: Joi.number().integer(),
-// //   mvpPlayer: Joi.string().allow(null, "")
-// // });
-
-// // // Sanani formatlash uchun yordamchi funksiya
-// // const formatDateForFrontend = (game) => {
-// //   const dateObj = new Date(game.playDate);
-// //   const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-// //   const months = [
-// //     "Jan",
-// //     "Feb",
-// //     "Mar",
-// //     "Apr",
-// //     "May",
-// //     "Jun",
-// //     "Jul",
-// //     "Aug",
-// //     "Sep",
-// //     "Oct",
-// //     "Nov",
-// //     "Dec",
-// //   ];
-
-// //   return {
-// //     ...game.toJSON(),
-// //     day: days[dateObj.getDay()],
-// //     date: dateObj.getDate().toString().padStart(2, "0"),
-// //     month: months[dateObj.getMonth()],
-// //     time: `${game.startTime} - ${game.endTime}`,
-// //     playersLeft: game.totalPlayers - game.playersJoined,
-// //   };
-// // };
-
-// // // 1. Hamma o'yinlarni olish
-// // // exports.getAllGames = async (req, res) => {
-// // //   try {
-// // //     const games = await Game.findAll({ order: [["playDate", "ASC"]] });
-// // //     // Frontendga moslab formatlaymiz
-// // //     const formattedGames = games.map(formatDateForFrontend);
-// // //     res.json(formattedGames);
-// // //   } catch (error) {
-// // //     res.status(500).json({ error: error.message });
-// // //   }
-// // // };
-
-// // // exports.getAllGames = async (req, res) => {
-// // //   try {
-// // //     const limit = req.query.limit ? parseInt(req.query.limit) : null;
-
-// // //     const options = {
-// // //       order: [["playDate", "ASC"]], // Eng yaqin o'yinlar har doim tepada
-// // //     };
-
-// // //     if (limit) {
-// // //       options.limit = limit; // Agar limit bo'lsa (masalan 4), faqat 4 ta oladi
-// // //     }
-
-// // //     const games = await Game.findAll(options);
-// // //     const formattedGames = games.map(formatDateForFrontend);
-// // //     res.json(formattedGames);
-// // //   } catch (error) {
-// // //     res.status(500).json({ error: error.message });
-// // //   }
-// // // };
-
-
-// // // Games controller namunasi
-// // exports.getAllGames = async (req, res) => {
-// // try {
-// //   const games = await Game.findAll();
-// //   res.json(games);
-// // } catch (err) {
-// //   console.error(err); // Bu log Render terminalida ko'rinadi
-// //   res.status(500).json({ message: "Server xatosi", error: err.message });
-// // }
-// // };
-
-// // // 2. Bitta o'yinni olish
-// // exports.getGameById = async (req, res) => {
-// //   try {
-// //     const game = await Game.findByPk(req.params.id);
-// //     if (!game) return res.status(404).json({ message: "O'yin topilmadi" });
-// //     res.json(formatDateForFrontend(game));
-// //   } catch (error) {
-// //     res.status(500).json({ error: error.message });
-// //   }
-// // };
-
-// // // 3. Yangi o'yin yaratish
-// // exports.createGame = async (req, res) => {
-// //   try {
-// //     const { error } = gameSchema.validate(req.body);
-// //     if (error) return res.status(400).json({ error: error.details[0].message });
-
-// //     const newGame = await Game.create(req.body);
-// //     res.status(201).json(formatDateForFrontend(newGame));
-// //   } catch (error) {
-// //     res.status(500).json({ error: error.message });
-// //   }
-// // };
-
-// // // 4. O'yinni yangilash
-// // exports.updateGame = async (req, res) => {
-// //   try {
-// //     const game = await Game.findByPk(req.params.id);
-// //     if (!game) return res.status(404).json({ message: "O'yin topilmadi" });
-
-// //     await game.update(req.body);
-// //     res.json(formatDateForFrontend(game));
-// //   } catch (error) {
-// //     res.status(500).json({ error: error.message });
-// //   }
-// // };
-
-// // // 5. O'yinni o'chirish
-// // exports.deleteGame = async (req, res) => {
-// //   try {
-// //     const game = await Game.findByPk(req.params.id);
-// //     if (!game) return res.status(404).json({ message: "O'yin topilmadi" });
-
-// //     await game.destroy();
-// //     res.json({ message: "O'yin muvaffaqiyatli o'chirildi" });
-// //   } catch (error) {
-// //     res.status(500).json({ error: error.message });
-// //   }
-// // };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // const { Game } = require("../models");
 // const Joi = require("joi");
-// const { Op } = require("sequelize"); // <-- MUHIM: Qidiruv uchun kerak
+// const { Op } = require("sequelize");
 
-// // Validatsiya sxemasi
+// // --- MUHIM O'ZGARISH: mapUrl validatsiyaga qo'shildi ---
 // const gameSchema = Joi.object({
 //   title: Joi.string().required(),
-//   subtitle: Joi.string().allow(""),
+//   subtitle: Joi.string().allow(null, ""), // Bo'sh bo'lishi mumkin
 //   location: Joi.string().required(),
+
+//   // YANGI: Xarita linki (URI bo'lishi kerak yoki bo'sh)
+//   mapUrl: Joi.string().allow(null, ""),
+
 //   playDate: Joi.date().required(),
 //   startTime: Joi.string().required(),
 //   endTime: Joi.string().required(),
@@ -217,8 +22,9 @@
 //   hasShowers: Joi.boolean(),
 //   type: Joi.string(),
 //   advance: Joi.number(),
-//   imageUrl: Joi.string().uri(),
+//   imageUrl: Joi.string().allow(null, ""), // Rasm bo'lmasligi ham mumkin
 //   rules: Joi.array().items(Joi.string()),
+
 //   isFinished: Joi.boolean(),
 //   scoreTeamA: Joi.number().integer(),
 //   scoreTeamB: Joi.number().integer(),
@@ -259,19 +65,16 @@
 //   try {
 //     const { limit, city, date } = req.query;
 
-//     // Filter shartlarini yig'amiz
 //     const whereClause = {};
 
-//     // 1. Shahar bo'yicha filter (Agar city bo'lsa)
+//     // 1. Shahar bo'yicha filter
 //     if (city && city !== "Barchasi") {
-//       // "Namangan" deb qidirsa, "Namangan, Davlatobod" ni ham topadi (LIKE operatori)
 //       whereClause.location = { [Op.like]: `%${city}%` };
 //     }
 
-//     // 2. Sana bo'yicha filter (Agar date bo'lsa)
+//     // 2. Sana bo'yicha filter
 //     if (date) {
 //       const searchDate = new Date(date);
-//       // Kun boshidan (00:00) kun oxirigacha (23:59) qidiramiz
 //       const startOfDay = new Date(searchDate.setHours(0, 0, 0, 0));
 //       const endOfDay = new Date(searchDate.setHours(23, 59, 59, 999));
 
@@ -280,10 +83,9 @@
 //       };
 //     }
 
-//     // So'rov opsiyalari
 //     const options = {
 //       where: whereClause,
-//       order: [["playDate", "ASC"]], // Eng yaqin o'yinlar tepada
+//       order: [["playDate", "ASC"]],
 //     };
 
 //     if (limit) {
@@ -314,12 +116,17 @@
 // // 3. Yangi o'yin yaratish
 // exports.createGame = async (req, res) => {
 //   try {
+//     // Validatsiya
 //     const { error } = gameSchema.validate(req.body);
-//     if (error) return res.status(400).json({ error: error.details[0].message });
+//     if (error) {
+//       console.log("Validatsiya xatosi:", error.details[0].message); // Terminalda ko'rish uchun
+//       return res.status(400).json({ error: error.details[0].message });
+//     }
 
 //     const newGame = await Game.create(req.body);
 //     res.status(201).json(formatDateForFrontend(newGame));
 //   } catch (error) {
+//     console.error("Create Game Error:", error);
 //     res.status(500).json({ error: error.message });
 //   }
 // };
@@ -329,6 +136,9 @@
 //   try {
 //     const game = await Game.findByPk(req.params.id);
 //     if (!game) return res.status(404).json({ message: "O'yin topilmadi" });
+
+//     // Validatsiyani update paytida ham tekshirish yaxshi, lekin majburiy emas (qisman update uchun)
+//     // Agar to'liq update qilsangiz, validatsiyani qo'shing.
 
 //     await game.update(req.body);
 //     res.json(formatDateForFrontend(game));
@@ -367,164 +177,104 @@
 
 
 
+
+
+
+
+
 const { Game } = require("../models");
-const Joi = require("joi");
-const { Op } = require("sequelize");
 
-// --- MUHIM O'ZGARISH: mapUrl validatsiyaga qo'shildi ---
-const gameSchema = Joi.object({
-  title: Joi.string().required(),
-  subtitle: Joi.string().allow(null, ""), // Bo'sh bo'lishi mumkin
-  location: Joi.string().required(),
-
-  // YANGI: Xarita linki (URI bo'lishi kerak yoki bo'sh)
-  mapUrl: Joi.string().allow(null, ""),
-
-  playDate: Joi.date().required(),
-  startTime: Joi.string().required(),
-  endTime: Joi.string().required(),
-  price: Joi.number().required(),
-  totalPlayers: Joi.number().integer(),
-  playersJoined: Joi.number().integer(),
-  isOutdoor: Joi.boolean(),
-  hasLockers: Joi.boolean(),
-  hasShowers: Joi.boolean(),
-  type: Joi.string(),
-  advance: Joi.number(),
-  imageUrl: Joi.string().allow(null, ""), // Rasm bo'lmasligi ham mumkin
-  rules: Joi.array().items(Joi.string()),
-
-  isFinished: Joi.boolean(),
-  scoreTeamA: Joi.number().integer(),
-  scoreTeamB: Joi.number().integer(),
-  mvpPlayer: Joi.string().allow(null, ""),
-});
-
-// Sanani formatlash
-const formatDateForFrontend = (game) => {
-  const dateObj = new Date(game.playDate);
-  const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-
-  return {
-    ...game.toJSON(),
-    day: days[dateObj.getDay()],
-    date: dateObj.getDate().toString().padStart(2, "0"),
-    month: months[dateObj.getMonth()],
-    time: `${game.startTime} - ${game.endTime}`,
-    playersLeft: (game.totalPlayers || 0) - (game.playersJoined || 0),
-  };
-};
-
-// 1. Hamma o'yinlarni olish (FILTER BILAN)
+// Barcha o'yinlarni olish
 exports.getAllGames = async (req, res) => {
   try {
-    const { limit, city, date } = req.query;
-
-    const whereClause = {};
-
-    // 1. Shahar bo'yicha filter
-    if (city && city !== "Barchasi") {
-      whereClause.location = { [Op.like]: `%${city}%` };
-    }
-
-    // 2. Sana bo'yicha filter
-    if (date) {
-      const searchDate = new Date(date);
-      const startOfDay = new Date(searchDate.setHours(0, 0, 0, 0));
-      const endOfDay = new Date(searchDate.setHours(23, 59, 59, 999));
-
-      whereClause.playDate = {
-        [Op.between]: [startOfDay, endOfDay],
-      };
-    }
-
-    const options = {
-      where: whereClause,
-      order: [["playDate", "ASC"]],
-    };
-
-    if (limit) {
-      options.limit = parseInt(limit);
-    }
-
-    const games = await Game.findAll(options);
-    const formattedGames = games.map(formatDateForFrontend);
-
-    res.json(formattedGames);
-  } catch (error) {
-    console.error("Xatolik:", error);
-    res.status(500).json({ error: error.message });
+    // Sanasi bo'yicha tartiblash (eng yangilari tepadaga)
+    const games = await Game.findAll({
+      order: [
+        ["playDate", "DESC"],
+        ["startTime", "ASC"],
+      ],
+    });
+    res.json(games);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// 2. Bitta o'yinni olish
+// Bitta o'yinni olish
 exports.getGameById = async (req, res) => {
   try {
     const game = await Game.findByPk(req.params.id);
     if (!game) return res.status(404).json({ message: "O'yin topilmadi" });
-    res.json(formatDateForFrontend(game));
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json(game);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// 3. Yangi o'yin yaratish
+// O'yin yaratish (CREATE)
 exports.createGame = async (req, res) => {
   try {
-    // Validatsiya
-    const { error } = gameSchema.validate(req.body);
-    if (error) {
-      console.log("Validatsiya xatosi:", error.details[0].message); // Terminalda ko'rish uchun
-      return res.status(400).json({ error: error.details[0].message });
+    const {
+      title,
+      playDate,
+      startTime,
+      price,
+      location,
+      team1Name,
+      team2Name,
+      rules,
+    } = req.body;
+
+    // Oddiy validatsiya
+    if (!title || !playDate || !startTime || !price) {
+      return res
+        .status(400)
+        .json({
+          message:
+            "Majburiy maydonlar to'ldirilmagan (Title, Date, Time, Price)",
+        });
     }
 
-    const newGame = await Game.create(req.body);
-    res.status(201).json(formatDateForFrontend(newGame));
-  } catch (error) {
-    console.error("Create Game Error:", error);
-    res.status(500).json({ error: error.message });
+    // O'yinni yaratish
+    const newGame = await Game.create({
+      ...req.body,
+      // Agar rules massiv bo'lmasa, bo'sh massiv qilamiz
+      rules: Array.isArray(rules) ? rules : [],
+      team1Name: team1Name || "Jamoa 1",
+      team2Name: team2Name || "Jamoa 2",
+    });
+
+    res.status(201).json(newGame);
+  } catch (err) {
+    console.error("Create Game Error:", err);
+    // Xatolikni aniq qaytarish (400 Bad Request sababini bilish uchun)
+    res.status(400).json({ message: "Yaratishda xatolik: " + err.message });
   }
 };
 
-// 4. O'yinni yangilash
+// O'yinni yangilash (UPDATE)
 exports.updateGame = async (req, res) => {
   try {
     const game = await Game.findByPk(req.params.id);
     if (!game) return res.status(404).json({ message: "O'yin topilmadi" });
 
-    // Validatsiyani update paytida ham tekshirish yaxshi, lekin majburiy emas (qisman update uchun)
-    // Agar to'liq update qilsangiz, validatsiyani qo'shing.
-
     await game.update(req.body);
-    res.json(formatDateForFrontend(game));
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json(game);
+  } catch (err) {
+    console.error("Update Game Error:", err);
+    res.status(400).json({ message: "Yangilashda xatolik: " + err.message });
   }
 };
 
-// 5. O'yinni o'chirish
+// O'yinni o'chirish (DELETE)
 exports.deleteGame = async (req, res) => {
   try {
     const game = await Game.findByPk(req.params.id);
     if (!game) return res.status(404).json({ message: "O'yin topilmadi" });
 
     await game.destroy();
-    res.json({ message: "O'yin muvaffaqiyatli o'chirildi" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json({ message: "O'yin o'chirildi" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
