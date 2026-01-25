@@ -77,107 +77,40 @@
 
 
 
-const axios = require("axios");
 const { Game, User, UserGame, Transaction, sequelize } = require("../models");
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-
-// 1. O'YIN UCHUN INVOICE
-exports.createInvoiceLink = async (req, res) => {
-  try {
-    const { gameId, userId, provider } = req.body;
-    const game = await Game.findByPk(gameId);
-    if (!game) return res.status(404).json({ message: "O'yin topilmadi" });
-
-    const advanceAmount = parseInt(game.price * 0.3);
-    const amountInTiyin = advanceAmount * 100;
-
-    let providerToken =
-      provider === "payme"
-        ? process.env.PAYME_PROVIDER_TOKEN
-        : process.env.CLICK_PROVIDER_TOKEN;
-    if (!providerToken)
-      return res.status(400).json({ message: "Token topilmadi" });
-
-    const response = await axios.post(
-      `https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`,
-      {
-        title: game.title,
-        description: `O'yin uchun zaklad: ${game.location}`,
-        payload: `GAME_${gameId}_${userId}`,
-        provider_token: providerToken,
-        currency: "UZS",
-        prices: [{ label: "Zaklad (30%)", amount: amountInTiyin }],
-        photo_url: game.imageUrl,
-        need_name: true,
-        need_phone_number: true,
-      }
-    );
-
-    if (response.data.ok) res.json({ url: response.data.result });
-    else res.status(500).json({ message: "Telegram API xatosi" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// 2. BALANS TO'LDIRISH
-exports.createTopUpInvoice = async (req, res) => {
-  try {
-    const { userId, amount, provider } = req.body;
-    if (amount < 1000)
-      return res.status(400).json({ message: "Minimal to'lov 1000 so'm" });
-
-    let providerToken =
-      provider === "payme"
-        ? process.env.PAYME_PROVIDER_TOKEN
-        : process.env.CLICK_PROVIDER_TOKEN;
-    const response = await axios.post(
-      `https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`,
-      {
-        title: "Hamyonni to'ldirish",
-        description: `GF Hisobingizni ${amount} so'mga to'ldirish`,
-        payload: `TOPUP_${userId}_${amount}`,
-        provider_token: providerToken,
-        currency: "UZS",
-        prices: [{ label: "Hamyon to'lovi", amount: amount * 100 }],
-        photo_url: "https://cdn-icons-png.flaticon.com/512/2953/2953363.png",
-        need_name: true,
-      }
-    );
-
-    if (response.data.ok) res.json({ url: response.data.result });
-    else res.status(500).json({ message: "Invoice yaratishda xatolik" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// 3. BALANSDAN TO'LASH (TUZATILDI)
+// 1. BALANSDAN TO'LASH (PAY FROM BALANCE)
 exports.payFromBalance = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { userId, gameId } = req.body; // userId = Telegram ID
+    const { userId, gameId } = req.body; // userId = Telegram ID (7116193043)
 
+    // 1. Foydalanuvchini Telegram ID orqali bazadan qidiramiz
     const user = await User.findOne({
       where: { telegramId: String(userId) },
       transaction: t,
     });
     const game = await Game.findByPk(gameId, { transaction: t });
 
-    if (!user || !game) {
+    if (!user) {
       await t.rollback();
       return res
         .status(404)
-        .json({ message: "Foydalanuvchi yoki o'yin topilmadi" });
+        .json({ message: "Foydalanuvchi topilmadi. Profilingizni oching." });
+    }
+    if (!game) {
+      await t.rollback();
+      return res.status(404).json({ message: "O'yin topilmadi" });
     }
 
+    // 2. Narxni hisoblash
     const paymentAmount =
       game.advance > 0
         ? parseFloat(game.advance)
         : Math.floor(parseFloat(game.price) * 0.3);
 
-    if (parseFloat(user.balance) < paymentAmount) {
+    // 3. Balansni tekshirish
+    if (parseFloat(user.balance || 0) < paymentAmount) {
       await t.rollback();
       return res
         .status(400)
@@ -186,16 +119,10 @@ exports.payFromBalance = async (req, res) => {
         });
     }
 
-    // Balansni yangilash
-    await user.update(
-      { balance: parseFloat(user.balance) - paymentAmount },
-      { transaction: t }
-    );
-
-    // UserGame yaratish (user.id = Database Integer ID)
+    // 4. Bazadagi haqiqiy ID orqali UserGame yaratamiz (FOREIGN KEY HATOSINI YO'QOTADI)
     await UserGame.create(
       {
-        userId: user.id, // MUHIM: Telegram ID emas, bazadagi ID!
+        userId: user.id, // <--- Telegram ID emas, bazadagi ID (masalan: 12)
         gameId: game.id,
         status: "paid_balance",
         paymentAmount: paymentAmount,
@@ -204,12 +131,17 @@ exports.payFromBalance = async (req, res) => {
       { transaction: t }
     );
 
+    // 5. Balansni yangilash
+    await user.update(
+      { balance: parseFloat(user.balance) - paymentAmount },
+      { transaction: t }
+    );
     await game.increment("playersJoined", { transaction: t });
 
-    // Tarixga yozish
+    // 6. Tarixga yozish (Bazadagi user.id bilan)
     await Transaction.create(
       {
-        userId: user.id, // MUHIM: Bazadagi ID!
+        userId: user.id,
         amount: paymentAmount,
         type: "expense",
         description: `${game.title} (Hamyondan)`,
@@ -222,27 +154,28 @@ exports.payFromBalance = async (req, res) => {
     res.json({ message: "To'lov muvaffaqiyatli!", newBalance: user.balance });
   } catch (error) {
     await t.rollback();
-    res.status(500).json({ message: error.message });
+    console.error("Pay Error:", error);
+    res.status(500).json({ message: "Xatolik: " + error.message });
   }
 };
 
-// 4. TARIXNI OLISH (TUZATILDI)
+// 2. TARIXNI OLISH (500 XATOSINI TUZATISH)
 exports.getHistory = async (req, res) => {
   try {
     const { telegramId } = req.query;
+    // Avval Telegram ID orqali user.id ni aniqlaymiz
     const user = await User.findOne({
       where: { telegramId: String(telegramId) },
     });
 
-    if (!user) return res.status(404).json({ message: "User topilmadi" });
+    if (!user) return res.json([]); // Foydalanuvchi topilmasa bo'sh ro'yxat
 
     const history = await Transaction.findAll({
-      where: { userId: user.id }, // MUHIM: Bazadagi ID orqali qidirish!
+      where: { userId: user.id }, // Bazadagi tartib raqami bo'yicha qidiramiz
       order: [["createdAt", "DESC"]],
     });
-
     res.json(history);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };

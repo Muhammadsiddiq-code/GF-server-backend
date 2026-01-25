@@ -202,91 +202,150 @@ if (!token) {
     }
   });
 
-  // 3. Muvaffaqiyatli to'lov (Successful Payment)
-  bot.on("successful_payment", async (msg) => {
-    console.log("✅ TO'LOV QABUL QILINDI!");
+  // // 3. Muvaffaqiyatli to'lov (Successful Payment)
+  // bot.on("successful_payment", async (msg) => {
+  //   console.log("✅ TO'LOV QABUL QILINDI!");
 
+  //   const payment = msg.successful_payment;
+  //   const payload = payment.invoice_payload;
+  //   const amountSum = payment.total_amount / 100;
+
+  //   try {
+  //     const parts = payload.split("_");
+  //     const type = parts[0]; // GAME yoki TOPUP
+
+  //     // --- A) O'YINGA QO'SHILISH (GAME_gameId_telegramId) ---
+  //     if (type === "GAME") {
+  //       const gameId = parts[1];
+  //       const telegramId = String(parts[2]);
+
+  //       // Avval foydalanuvchini bazadagi ID-sini topamiz (Primary Key uchun)
+  //       const user = await User.findOne({ where: { telegramId: telegramId } });
+
+  //       if (user) {
+  //         // UserGame yaratish (Database ID ishlatiladi)
+  //         const [entry, created] = await UserGame.findOrCreate({
+  //           where: { userId: user.id, gameId: gameId },
+  //           defaults: {
+  //             status: "paid",
+  //             paymentAmount: amountSum,
+  //             team: "A",
+  //           },
+  //         });
+
+  //         if (created) {
+  //           const game = await Game.findByPk(gameId);
+  //           if (game) await game.increment("playersJoined");
+
+  //           // Transaction yozish
+  //           await Transaction.create({
+  //             userId: user.id,
+  //             amount: amountSum,
+  //             type: "expense",
+  //             description: `${game?.title || "O'yin"} uchun to'lov (Bot)`,
+  //             paymentMethod: "telegram_payment",
+  //           });
+
+  //           await bot.sendMessage(
+  //             msg.chat.id,
+  //             "✅ To'lov qabul qilindi! Siz o'yinga yozildingiz."
+  //           );
+  //         } else {
+  //           await bot.sendMessage(
+  //             msg.chat.id,
+  //             "⚠️ Siz allaqachon bu o'yinga yozilgansiz."
+  //           );
+  //         }
+  //       }
+  //     }
+
+  //     // --- B) HAMYONNI TO'LDIRISH (TOPUP_telegramId_summa) ---
+  //     else if (type === "TOPUP") {
+  //       const telegramId = String(parts[1]);
+
+  //       const user = await User.findOne({ where: { telegramId: telegramId } });
+  //       if (user) {
+  //         // Balansni oshirish
+  //         await user.update({
+  //           balance: parseFloat(user.balance || 0) + amountSum,
+  //         });
+
+  //         // Transaction yozish
+  //         await Transaction.create({
+  //           userId: user.id,
+  //           amount: amountSum,
+  //           type: "income",
+  //           description: "Hamyon to'ldirildi (Bot)",
+  //           paymentMethod: "telegram_payment",
+  //         });
+
+  //         await bot.sendMessage(
+  //           msg.chat.id,
+  //           `✅ Balans to'ldirildi! +${amountSum.toLocaleString()} UZS`
+  //         );
+  //       }
+  //     }
+  //   } catch (err) {
+  //     console.error("❌ To'lovni qayta ishlashda xatolik:", err);
+  //   }
+  // });
+
+  // app.js ichidagi bot.on("successful_payment", ...) qismini shunga almashtiring:
+
+  bot.on("successful_payment", async (msg) => {
     const payment = msg.successful_payment;
     const payload = payment.invoice_payload;
     const amountSum = payment.total_amount / 100;
 
     try {
       const parts = payload.split("_");
-      const type = parts[0]; // GAME yoki TOPUP
+      const type = parts[0];
 
-      // --- A) O'YINGA QO'SHILISH (GAME_gameId_telegramId) ---
       if (type === "GAME") {
         const gameId = parts[1];
         const telegramId = String(parts[2]);
 
-        // Avval foydalanuvchini bazadagi ID-sini topamiz (Primary Key uchun)
+        // Bazadan foydalanuvchini topamiz
         const user = await User.findOne({ where: { telegramId: telegramId } });
-
         if (user) {
-          // UserGame yaratish (Database ID ishlatiladi)
-          const [entry, created] = await UserGame.findOrCreate({
+          // user.id (tartib raqami) orqali UserGame yaratish
+          await UserGame.findOrCreate({
             where: { userId: user.id, gameId: gameId },
-            defaults: {
-              status: "paid",
-              paymentAmount: amountSum,
-              team: "A",
-            },
+            defaults: { status: "paid", paymentAmount: amountSum, team: "A" },
           });
 
-          if (created) {
-            const game = await Game.findByPk(gameId);
-            if (game) await game.increment("playersJoined");
+          const game = await Game.findByPk(gameId);
+          if (game) await game.increment("playersJoined");
 
-            // Transaction yozish
-            await Transaction.create({
-              userId: user.id,
-              amount: amountSum,
-              type: "expense",
-              description: `${game?.title || "O'yin"} uchun to'lov (Bot)`,
-              paymentMethod: "telegram_payment",
-            });
+          await Transaction.create({
+            userId: user.id,
+            amount: amountSum,
+            type: "expense",
+            description: `${game?.title || "O'yin"} uchun to'lov (Telegram)`,
+            paymentMethod: "telegram_payment",
+          });
 
-            await bot.sendMessage(
-              msg.chat.id,
-              "✅ To'lov qabul qilindi! Siz o'yinga yozildingiz."
-            );
-          } else {
-            await bot.sendMessage(
-              msg.chat.id,
-              "⚠️ Siz allaqachon bu o'yinga yozilgansiz."
-            );
-          }
+          await bot.sendMessage(msg.chat.id, "✅ To'lov qabul qilindi!");
         }
-      }
-
-      // --- B) HAMYONNI TO'LDIRISH (TOPUP_telegramId_summa) ---
-      else if (type === "TOPUP") {
+      } else if (type === "TOPUP") {
         const telegramId = String(parts[1]);
-
         const user = await User.findOne({ where: { telegramId: telegramId } });
         if (user) {
-          // Balansni oshirish
           await user.update({
             balance: parseFloat(user.balance || 0) + amountSum,
           });
-
-          // Transaction yozish
           await Transaction.create({
             userId: user.id,
             amount: amountSum,
             type: "income",
-            description: "Hamyon to'ldirildi (Bot)",
+            description: "Hamyon to'ldirildi",
             paymentMethod: "telegram_payment",
           });
-
-          await bot.sendMessage(
-            msg.chat.id,
-            `✅ Balans to'ldirildi! +${amountSum.toLocaleString()} UZS`
-          );
+          await bot.sendMessage(msg.chat.id, "✅ Balans to'ldirildi!");
         }
       }
     } catch (err) {
-      console.error("❌ To'lovni qayta ishlashda xatolik:", err);
+      console.error("❌ To'lovda xatolik:", err);
     }
   });
 }
