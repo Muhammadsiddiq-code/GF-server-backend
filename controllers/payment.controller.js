@@ -6,10 +6,10 @@ require("dotenv").config();
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false });
 const providerToken = process.env.PROVIDER_TOKEN;
 
-// 1. Invoice yaratish
+// 1. Invoice yaratish (Click/Payme)
 const createInvoice = async (req, res) => {
   try {
-    const { telegramId, amount, gameId, type } = req.body;
+    const { telegramId, amount, gameId, type, team } = req.body;
 
     if (!telegramId) return res.status(400).json({ msg: "Telegram ID kerak" });
 
@@ -21,8 +21,13 @@ const createInvoice = async (req, res) => {
       if (!game) return res.status(404).json({ msg: "O'yin topilmadi" });
 
       title = `To'lov: ${game.title}`;
-      description = `${game.title} o'yini uchun to'lov`;
-      payload = `GAME_${gameId}_${tgIdString}`;
+      description = `${game.title} o'yiniga to'lov (${
+        team || "Jamoa tanlanmadi"
+      })`;
+      // Payloadga jamoani qo'shamiz: GAME_GAMEID_USERID_TEAMNAME
+      payload = `GAME_${gameId}_${tgIdString}_${
+        team ? team.replace(/\s/g, "") : "NA"
+      }`;
       prices = [{ label: game.title, amount: parseInt(amount) * 100 }];
     } else {
       title = "Hamyonni to'ldirish";
@@ -48,77 +53,74 @@ const createInvoice = async (req, res) => {
   }
 };
 
-// 2. Hamyon orqali to'lash (YANGILANGAN LOGIKA)
+// 2. Hamyon orqali to'lash (ASOSIY FUNKSIYA)
 const payWithWallet = async (req, res) => {
   try {
-    const { telegramId, gameId, amount } = req.body;
+    const { telegramId, gameId, amount, team } = req.body;
 
+    // 1. Validatsiya
     if (!telegramId)
       return res.status(400).json({ msg: "Telegram ID topilmadi" });
-
     const tgIdString = String(telegramId);
 
-    // 1. User va Game ni topamiz
+    // 2. Ma'lumotlarni olish
     const user = await User.findOne({ where: { telegramId: tgIdString } });
     const game = await Game.findByPk(gameId);
 
-    if (!user || !game) {
-      return res.status(404).json({ msg: "User yoki O'yin topilmadi" });
-    }
+    if (!user) return res.status(404).json({ msg: "Foydalanuvchi topilmadi" });
+    if (!game) return res.status(404).json({ msg: "O'yin topilmadi" });
 
-    // 2. Balans yetarliligini tekshiramiz
+    // 3. Balansni tekshirish
     const payAmount = amount ? parseFloat(amount) : game.price;
-
     if (user.balance < payAmount) {
       return res
         .status(400)
         .json({ msg: "Hisobingizda mablag' yetarli emas." });
     }
 
-    // 3. User allaqachon bu o'yinda bormi?
+    // 4. User bu o'yinda bormi?
     let userGameEntry = await UserGame.findOne({
       where: { userId: user.id, gameId: game.id },
     });
 
-    // --- TRANZAKSIYALAR BOSHLANISHI ---
+    // --- TRANZAKSIYA ---
 
-    // A) User balansidan pul yechish
+    // A) Pul yechish
     await user.update({ balance: user.balance - payAmount });
 
-    // B) UserGame ni yangilash yoki yaratish
+    // B) UserGame ga yozish (Update yoki Create)
     if (userGameEntry) {
-      // Agar avval bor bo'lsa (masalan Avans to'lagan), faqat summani qo'shamiz
+      // Agar user avval to'lagan bo'lsa (Avans), faqat summani qo'shamiz
       const newTotal = parseFloat(userGameEntry.paymentAmount || 0) + payAmount;
       await userGameEntry.update({
         paymentAmount: newTotal,
-        status: "paid", // Har ehtimolga qarshi statusni yangilaymiz
+        status: "paid",
+        // Jamoani o'zgartirmaymiz, chunki avval tanlab bo'lgan
       });
     } else {
-      // Agar yo'q bo'lsa (birinchi marta to'layotgan bo'lsa), yangi yaratamiz
+      // Agar yangi bo'lsa, YANGI yozamiz va JAMOANI saqlaymiz
       await UserGame.create({
         userId: user.id,
         gameId: game.id,
         status: "paid",
         paymentAmount: payAmount,
-        team: "A",
+        team: team || "Aniqlanmadi", // <--- JAMOA NOMI MUHIM
       });
-      // Faqat yangi qo'shilganda o'yinchi sonini oshiramiz
+
+      // O'yinchilar sonini oshirish
       await game.increment("playersJoined");
     }
 
-    // C) Tarixga yozish (Bu har doim yozilishi kerak, har bir to'lov uchun)
+    // C) Tarixga yozish
     await Transaction.create({
       userId: user.id,
       amount: payAmount,
       type: "expense",
-      description: `${game.title} (Hamyon to'lovi)`,
+      description: `${game.title} (${team || "To'lov"})`,
       paymentMethod: "wallet",
     });
 
-    res.json({
-      success: true,
-      message: "To'lov muvaffaqiyatli amalga oshirildi!",
-    });
+    res.json({ success: true, message: "To'lov muvaffaqiyatli!" });
   } catch (error) {
     console.error("Wallet Pay Error:", error);
     res.status(500).json({ msg: "Server xatosi: " + error.message });
@@ -136,6 +138,7 @@ const getUserWallet = async (req, res) => {
       include: [{ model: Transaction, as: "transactions" }],
     });
 
+    // Agar user bo'lmasa yoki karta raqami yo'q bo'lsa
     if (user && !user.walletCardNumber) {
       const uniqueNum =
         "GF-" +
@@ -146,13 +149,8 @@ const getUserWallet = async (req, res) => {
     }
     res.json(user);
   } catch (error) {
-    console.error("Get Wallet Error:", error);
     res.status(500).json({ msg: error.message });
   }
 };
 
-module.exports = {
-  createInvoice,
-  payWithWallet,
-  getUserWallet,
-};
+module.exports = { createInvoice, payWithWallet, getUserWallet };

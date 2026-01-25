@@ -114,7 +114,6 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
 
-    
     subtitle: { type: DataTypes.STRING },
     location: { type: DataTypes.STRING, allowNull: false },
     playDate: { type: DataTypes.DATE, allowNull: false },
@@ -136,6 +135,15 @@ module.exports = (sequelize, DataTypes) => {
     mvpPlayer: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+
+    team1Name: {
+      type: DataTypes.STRING,
+      defaultValue: "Jamoa 1", // Agar nom berilmasa, default
+    },
+    team2Name: {
+      type: DataTypes.STRING,
+      defaultValue: "Jamoa 2",
     },
   });
 
