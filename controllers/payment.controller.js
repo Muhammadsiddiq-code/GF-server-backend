@@ -82,21 +82,20 @@ const { Game, User, UserGame, Transaction, sequelize } = require("../models");
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-// 1. O'YIN UCHUN INVOICE (Payme/Click orqali to'g'ridan-to'g'ri to'lash)
+// 1. O'YIN UCHUN INVOICE
 exports.createInvoiceLink = async (req, res) => {
   try {
     const { gameId, userId, provider } = req.body;
     const game = await Game.findByPk(gameId);
     if (!game) return res.status(404).json({ message: "O'yin topilmadi" });
 
-    // Zaklad 30%
     const advanceAmount = parseInt(game.price * 0.3);
     const amountInTiyin = advanceAmount * 100;
 
-    let providerToken = "";
-    if (provider === "payme") providerToken = process.env.PAYME_PROVIDER_TOKEN;
-    if (provider === "click") providerToken = process.env.CLICK_PROVIDER_TOKEN;
-
+    let providerToken =
+      provider === "payme"
+        ? process.env.PAYME_PROVIDER_TOKEN
+        : process.env.CLICK_PROVIDER_TOKEN;
     if (!providerToken)
       return res.status(400).json({ message: "Token topilmadi" });
 
@@ -104,7 +103,7 @@ exports.createInvoiceLink = async (req, res) => {
       `https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`,
       {
         title: game.title,
-        description: `O'yin uchun zaklad to'lovi (${game.location})`,
+        description: `O'yin uchun zaklad: ${game.location}`,
         payload: `GAME_${gameId}_${userId}`,
         provider_token: providerToken,
         currency: "UZS",
@@ -115,35 +114,24 @@ exports.createInvoiceLink = async (req, res) => {
       }
     );
 
-    if (response.data.ok) {
-      res.json({ url: response.data.result });
-    } else {
-      res.status(500).json({ message: "Telegram API xatosi" });
-    }
+    if (response.data.ok) res.json({ url: response.data.result });
+    else res.status(500).json({ message: "Telegram API xatosi" });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// 2. BALANSNI TO'LDIRISH UCHUN INVOICE
+// 2. BALANS TO'LDIRISH
 exports.createTopUpInvoice = async (req, res) => {
   try {
     const { userId, amount, provider } = req.body;
-
-    // Minimal summa tekshiruvi
     if (amount < 1000)
       return res.status(400).json({ message: "Minimal to'lov 1000 so'm" });
 
-    let providerToken = "";
-    if (provider === "payme") providerToken = process.env.PAYME_PROVIDER_TOKEN;
-    if (provider === "click") providerToken = process.env.CLICK_PROVIDER_TOKEN;
-
-    if (!providerToken)
-      return res.status(400).json({ message: "Token topilmadi" });
-
-    const amountInTiyin = amount * 100;
-
+    let providerToken =
+      provider === "payme"
+        ? process.env.PAYME_PROVIDER_TOKEN
+        : process.env.CLICK_PROVIDER_TOKEN;
     const response = await axios.post(
       `https://api.telegram.org/bot${BOT_TOKEN}/createInvoiceLink`,
       {
@@ -152,100 +140,62 @@ exports.createTopUpInvoice = async (req, res) => {
         payload: `TOPUP_${userId}_${amount}`,
         provider_token: providerToken,
         currency: "UZS",
-        prices: [{ label: "Hamyon to'lovi", amount: amountInTiyin }],
+        prices: [{ label: "Hamyon to'lovi", amount: amount * 100 }],
         photo_url: "https://cdn-icons-png.flaticon.com/512/2953/2953363.png",
         need_name: true,
       }
     );
 
-    if (response.data.ok) {
-      res.json({ url: response.data.result });
-    } else {
-      console.error("Telegram Error:", response.data);
-      res.status(500).json({ message: "Invoice yaratishda xatolik" });
-    }
+    if (response.data.ok) res.json({ url: response.data.result });
+    else res.status(500).json({ message: "Invoice yaratishda xatolik" });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// 3. BALANSDAN TO'LASH (YAKUNIY VERSIYA)
+// 3. BALANSDAN TO'LASH (TUZATILDI)
 exports.payFromBalance = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { userId, gameId } = req.body;
+    const { userId, gameId } = req.body; // userId = Telegram ID
 
-    console.log(`💰 PAY REQUEST: User=${userId}, Game=${gameId}`);
-
-    // 1. User va O'yinni tekshirish
     const user = await User.findOne({
       where: { telegramId: String(userId) },
       transaction: t,
     });
     const game = await Game.findByPk(gameId, { transaction: t });
 
-    if (!user) {
+    if (!user || !game) {
       await t.rollback();
       return res
         .status(404)
-        .json({ message: "Foydalanuvchi topilmadi. Iltimos, /start bosing." });
-    }
-    if (!game) {
-      await t.rollback();
-      return res.status(404).json({ message: "O'yin topilmadi" });
+        .json({ message: "Foydalanuvchi yoki o'yin topilmadi" });
     }
 
-    // 2. Status tekshiruvi
-    if (game.isFinished) {
-      await t.rollback();
-      return res.status(400).json({ message: "O'yin tugagan" });
-    }
-    if (game.playersJoined >= game.totalPlayers) {
-      await t.rollback();
-      return res.status(400).json({ message: "Joylar to'lgan" });
-    }
+    const paymentAmount =
+      game.advance > 0
+        ? parseFloat(game.advance)
+        : Math.floor(parseFloat(game.price) * 0.3);
 
-    // 3. Qayta yozilishni tekshirish
-    const existing = await UserGame.findOne({
-      where: { userId: user.id, gameId: game.id },
-      transaction: t,
-    });
-    if (existing) {
+    if (parseFloat(user.balance) < paymentAmount) {
       await t.rollback();
       return res
         .status(400)
-        .json({ message: "Siz allaqachon bu o'yinga yozilgansiz" });
+        .json({
+          message: `Mablag' yetarli emas. Balans: ${user.balance} so'm`,
+        });
     }
 
-    // 4. Narxni hisoblash
-    let paymentAmount = 0;
-    if (game.advance > 0) {
-      paymentAmount = parseFloat(game.advance);
-    } else {
-      paymentAmount = Math.floor(parseFloat(game.price) * 0.3);
-    }
-
-    const userBalance = parseFloat(user.balance || 0);
-
-    console.log(`💵 Kerak: ${paymentAmount}, Bor: ${userBalance}`);
-
-    if (userBalance < paymentAmount) {
-      await t.rollback();
-      return res.status(400).json({
-        message: `Mablag' yetarli emas! Sizda: ${userBalance.toLocaleString()} so'm, Kerak: ${paymentAmount.toLocaleString()} so'm`,
-      });
-    }
-
-    // 5. To'lovni bajarish
+    // Balansni yangilash
     await user.update(
-      { balance: userBalance - paymentAmount },
+      { balance: parseFloat(user.balance) - paymentAmount },
       { transaction: t }
     );
 
+    // UserGame yaratish (user.id = Database Integer ID)
     await UserGame.create(
       {
-        userId: user.id,
+        userId: user.id, // MUHIM: Telegram ID emas, bazadagi ID!
         gameId: game.id,
         status: "paid_balance",
         paymentAmount: paymentAmount,
@@ -256,44 +206,38 @@ exports.payFromBalance = async (req, res) => {
 
     await game.increment("playersJoined", { transaction: t });
 
-    // 6. Tarixga yozish
-    if (Transaction) {
-      await Transaction.create(
-        {
-          userId: user.id,
-          amount: paymentAmount,
-          type: "expense",
-          description: `${game.title} (Hamyondan)`,
-          paymentMethod: "wallet",
-        },
-        { transaction: t }
-      );
-    }
+    // Tarixga yozish
+    await Transaction.create(
+      {
+        userId: user.id, // MUHIM: Bazadagi ID!
+        amount: paymentAmount,
+        type: "expense",
+        description: `${game.title} (Hamyondan)`,
+        paymentMethod: "wallet",
+      },
+      { transaction: t }
+    );
 
     await t.commit();
-    res.json({
-      message: "Muvaffaqiyatli to'landi",
-      newBalance: userBalance - paymentAmount,
-    });
+    res.json({ message: "To'lov muvaffaqiyatli!", newBalance: user.balance });
   } catch (error) {
     await t.rollback();
-    console.error("🔥 Pay Error:", error);
-    res.status(500).json({ message: error.message || "Serverda xatolik" });
+    res.status(500).json({ message: error.message });
   }
 };
 
-// 4. TARIXNI OLISH
+// 4. TARIXNI OLISH (TUZATILDI)
 exports.getHistory = async (req, res) => {
   try {
     const { telegramId } = req.query;
-    if (!telegramId)
-      return res.status(400).json({ message: "Telegram ID kerak" });
+    const user = await User.findOne({
+      where: { telegramId: String(telegramId) },
+    });
 
-    const user = await User.findOne({ where: { telegramId } });
-    if (!user) return res.status(404).json({ message: "User yo'q" });
+    if (!user) return res.status(404).json({ message: "User topilmadi" });
 
     const history = await Transaction.findAll({
-      where: { userId: user.id },
+      where: { userId: user.id }, // MUHIM: Bazadagi ID orqali qidirish!
       order: [["createdAt", "DESC"]],
     });
 

@@ -36,9 +36,19 @@
 module.exports = (sequelize, DataTypes) => {
   const UserGame = sequelize.define("UserGame", {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    userId: { type: DataTypes.INTEGER, allowNull: false },
-    gameId: { type: DataTypes.INTEGER, allowNull: false },
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: { model: "users", key: "id" }, // Users jadvalidagi ID ga bog'lanish
+    },
+    gameId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: { model: "games", key: "id" },
+    },
     team: { type: DataTypes.ENUM("A", "B"), defaultValue: "A" },
+    status: { type: DataTypes.STRING, defaultValue: "pending" }, // YANGI
+    paymentAmount: { type: DataTypes.FLOAT, defaultValue: 0 }, // YANGI
   });
   return UserGame;
 };
