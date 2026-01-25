@@ -1,7 +1,7 @@
 // const db = require("../models");
 // const User = db.User;
 
-// // Login or Register
+// // Login or Register (Va Profile Update)
 // exports.loginOrRegister = async (req, res) => {
 //   try {
 //     const {
@@ -10,13 +10,16 @@
 //       lastName,
 //       username,
 //       photo_url,
-//       start_param, // <-- Frontendan kelayotgan referral ID
+//       start_param,
+//       // --- YANGI: Frontenddan keladigan qo'shimcha ma'lumotlar ---
+//       phone,
+//       city,
+//       position,
 //     } = req.body;
 
+//     // Loglarni ko'rish (Debugging)
 //     console.log("------------------------------------------------");
-//     console.log("LOGIN SO'ROVI KELDI:");
-//     console.log("Kelgan User ID:", telegramId);
-//     console.log("Kelgan Start Param (Referral):", start_param);
+//     console.log("REQUEST KELDI:", { telegramId, city, position, phone });
 
 //     if (!telegramId) {
 //       return res.status(400).json({ message: "Telegram ID yetishmayapti" });
@@ -25,18 +28,29 @@
 //     const strId = String(telegramId);
 //     let user = await User.findOne({ where: { telegramId: strId } });
 
-//     // 1. AGAR USER MAVJUD BO'LSA (LOGIN)
+//     // 1. AGAR USER MAVJUD BO'LSA (LOGIN YOKI UPDATE)
 //     if (user) {
-//       console.log("User allaqachon mavjud. Login qilinmoqda.");
+//       console.log("User topildi, ma'lumotlar yangilanmoqda...");
 
 //       const updatedFields = {};
+
+//       // Asosiy ma'lumotlar
 //       if (firstName) updatedFields.firstName = firstName;
 //       if (lastName) updatedFields.lastName = lastName;
 //       if (username) updatedFields.username = username;
 //       if (photo_url) updatedFields.photo = photo_url;
 
+//       // --- MUHIM O'ZGARISH: Profil ma'lumotlarini yangilash ---
+//       // Agar frontenddan phone, city yoki position kelsa, bazaga yozamiz
+//       if (phone) updatedFields.phone = phone;
+//       if (city) updatedFields.city = city;
+//       if (position) updatedFields.position = position;
+//       // -------------------------------------------------------
+
 //       await user.update(updatedFields);
-//       return res.json({ message: "Login muvaffaqiyatli", user });
+
+//       console.log("Yangilandi:", updatedFields);
+//       return res.json({ message: "Muvaffaqiyatli yangilandi", user });
 //     }
 
 //     // 2. AGAR USER YANGI BO'LSA (REGISTER)
@@ -51,52 +65,36 @@
 //         username,
 //         photo: photo_url,
 //         invitedBy: start_param ? String(start_param) : null,
-//         xp: 500, // Boshlang'ich bonus
+//         xp: 500,
+//         // Default qiymatlar modelda bor, lekin kelgan bo'lsa yozamiz
+//         phone: phone || "",
+//         city: city || "-",
+//         position: position || "Mid",
 //       });
 
 //       console.log("Yangi user bazaga yozildi.");
 
 //       // --- REFERRAL LOGIKASI ---
-//       // Agar start_param bo'lsa VA o'zi o'zini taklif qilmagan bo'lsa
 //       if (start_param && String(start_param) !== strId) {
-//         console.log("Referral tekshirilmoqda. Inviter ID:", start_param);
-
-//         // Taklif qilgan odamni qidiramiz
 //         const inviter = await User.findOne({
 //           where: { telegramId: String(start_param) },
 //         });
 
 //         if (inviter) {
-//           console.log(
-//             `Taklif qilgan odam topildi: ${inviter.firstName} (${inviter.xp} XP)`
-//           );
-
-//           // XP ni yangilashning eng ishonchli yo'li:
 //           const newXp = inviter.xp + 1000;
 //           await inviter.update({ xp: newXp });
-
-//           console.log(
-//             `MUVAFFAQIYAT! ${inviter.firstName} ga 1000 XP qo'shildi. Hozirgi XP: ${newXp}`
-//           );
-//         } else {
-//           console.log(
-//             "DIQQAT: Taklif qilgan odam (inviter) bazadan topilmadi! ID noto'g'ri bo'lishi mumkin."
-//           );
+//           console.log(`Referral ishladi: ${inviter.firstName} +1000 XP`);
 //         }
-//       } else {
-//         console.log("Referral yo'q yoki user o'zi o'zini taklif qildi.");
 //       }
 //       // -------------------------
 
 //       return res.status(201).json({ message: "Ro'yxatdan o'tildi", user });
 //     }
 //   } catch (error) {
-//     console.error("KATTA XATOLIK (Login Error):", error);
+//     console.error("XATOLIK:", error);
 //     res.status(500).json({ error: error.message });
 //   }
 // };
-
-
 
 // // 1. All Users
 // exports.getAllUsers = async (req, res) => {
@@ -121,8 +119,19 @@
 
 
 
+
+
+
 const db = require("../models");
 const User = db.User;
+
+// Tasodifiy 16 xonalik karta raqami yasash (GF-XXXX-XXXX-XXXX)
+const generateCardNumber = () => {
+  const p1 = Math.floor(1000 + Math.random() * 9000); // 4 ta raqam
+  const p2 = Math.floor(1000 + Math.random() * 9000);
+  const p3 = Math.floor(1000 + Math.random() * 9000);
+  return `GF-8600-${p1}-${p2}-${p3}`; // Masalan: GF-8600-1234-5678-9012
+};
 
 // Login or Register (Va Profile Update)
 exports.loginOrRegister = async (req, res) => {
@@ -134,13 +143,11 @@ exports.loginOrRegister = async (req, res) => {
       username,
       photo_url,
       start_param,
-      // --- YANGI: Frontenddan keladigan qo'shimcha ma'lumotlar ---
       phone,
       city,
       position,
     } = req.body;
 
-    // Loglarni ko'rish (Debugging)
     console.log("------------------------------------------------");
     console.log("REQUEST KELDI:", { telegramId, city, position, phone });
 
@@ -151,36 +158,33 @@ exports.loginOrRegister = async (req, res) => {
     const strId = String(telegramId);
     let user = await User.findOne({ where: { telegramId: strId } });
 
-    // 1. AGAR USER MAVJUD BO'LSA (LOGIN YOKI UPDATE)
+    // 1. UPDATE USER
     if (user) {
       console.log("User topildi, ma'lumotlar yangilanmoqda...");
-
       const updatedFields = {};
 
-      // Asosiy ma'lumotlar
       if (firstName) updatedFields.firstName = firstName;
       if (lastName) updatedFields.lastName = lastName;
       if (username) updatedFields.username = username;
       if (photo_url) updatedFields.photo = photo_url;
-
-      // --- MUHIM O'ZGARISH: Profil ma'lumotlarini yangilash ---
-      // Agar frontenddan phone, city yoki position kelsa, bazaga yozamiz
       if (phone) updatedFields.phone = phone;
       if (city) updatedFields.city = city;
       if (position) updatedFields.position = position;
-      // -------------------------------------------------------
+
+      // Agar eski userlarda karta raqami bo'lmasa, yaratib beramiz
+      if (!user.walletCardNumber) {
+        updatedFields.walletCardNumber = generateCardNumber();
+      }
 
       await user.update(updatedFields);
-
       console.log("Yangilandi:", updatedFields);
       return res.json({ message: "Muvaffaqiyatli yangilandi", user });
     }
 
-    // 2. AGAR USER YANGI BO'LSA (REGISTER)
+    // 2. CREATE NEW USER
     else {
       console.log("Yangi user yaratilmoqda...");
 
-      // Userni yaratamiz
       user = await User.create({
         telegramId: strId,
         firstName,
@@ -189,27 +193,27 @@ exports.loginOrRegister = async (req, res) => {
         photo: photo_url,
         invitedBy: start_param ? String(start_param) : null,
         xp: 500,
-        // Default qiymatlar modelda bor, lekin kelgan bo'lsa yozamiz
         phone: phone || "",
         city: city || "-",
         position: position || "Mid",
+        // YANGI: Boshlang'ich balans va karta
+        balance: 0,
+        walletCardNumber: generateCardNumber(),
       });
 
-      console.log("Yangi user bazaga yozildi.");
+      console.log("Yangi user bazaga yozildi. Karta:", user.walletCardNumber);
 
-      // --- REFERRAL LOGIKASI ---
+      // REFERRAL BONUS
       if (start_param && String(start_param) !== strId) {
         const inviter = await User.findOne({
           where: { telegramId: String(start_param) },
         });
-
         if (inviter) {
           const newXp = inviter.xp + 1000;
           await inviter.update({ xp: newXp });
-          console.log(`Referral ishladi: ${inviter.firstName} +1000 XP`);
+          console.log(`Referral: ${inviter.firstName} +1000 XP`);
         }
       }
-      // -------------------------
 
       return res.status(201).json({ message: "Ro'yxatdan o'tildi", user });
     }
@@ -219,12 +223,10 @@ exports.loginOrRegister = async (req, res) => {
   }
 };
 
-// 1. All Users
+// All Users
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.findAll({
-      order: [["xp", "DESC"]],
-    });
+    const users = await User.findAll({ order: [["xp", "DESC"]] });
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: error.message });
