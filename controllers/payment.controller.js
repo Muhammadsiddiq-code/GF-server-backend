@@ -78,16 +78,14 @@
 
 const { Game, User, UserGame, Transaction, sequelize } = require("../models");
 
-// --- HAMYONDAN TO'LASH (ASOSIY MANTIQ) ---
+// 1. HAMYONDAN TO'LASH (ASOSIY MANTIQ)
 exports.payFromBalance = async (req, res) => {
-  // Tranzaksiya ochamiz (pul yechilib, lekin o'yinga qo'shilmay qolishini oldini olish uchun)
   const t = await sequelize.transaction();
 
   try {
     const { userId, gameId } = req.body;
-    // userId - bu Telegram ID (Frontenddan keladi)
 
-    // 1. Foydalanuvchi va O'yinni topamiz
+    // User va O'yinni topamiz
     const user = await User.findOne({
       where: { telegramId: String(userId) },
       transaction: t,
@@ -96,11 +94,7 @@ exports.payFromBalance = async (req, res) => {
 
     if (!user) {
       await t.rollback();
-      return res
-        .status(404)
-        .json({
-          message: "Foydalanuvchi topilmadi. Iltimos, ro'yxatdan o'ting.",
-        });
+      return res.status(404).json({ message: "Foydalanuvchi topilmadi." });
     }
 
     if (!game) {
@@ -108,13 +102,13 @@ exports.payFromBalance = async (req, res) => {
       return res.status(404).json({ message: "O'yin topilmadi." });
     }
 
-    // 2. O'yin to'lib qolmaganini tekshiramiz
+    // O'yin to'lib qolmaganini tekshirish
     if (game.playersJoined >= game.totalPlayers) {
       await t.rollback();
       return res.status(400).json({ message: "O'yinda joylar qolmadi!" });
     }
 
-    // 3. Foydalanuvchi allaqachon qo'shilganmi?
+    // Allaqachon qo'shilganmi?
     const existingEntry = await UserGame.findOne({
       where: { userId: user.id, gameId: game.id },
       transaction: t,
@@ -127,34 +121,30 @@ exports.payFromBalance = async (req, res) => {
         .json({ message: "Siz allaqachon bu o'yinga qo'shilgansiz!" });
     }
 
-    // 4. To'lov summasini aniqlash
-    // Agar o'yinda 'advance' (zaklad) belgilangan bo'lsa, o'shani yechamiz, bo'lmasa to'liq narxni.
+    // Narxni aniqlash
     const paymentAmount =
       game.advance > 0 ? parseFloat(game.advance) : parseFloat(game.price);
 
-    // 5. Balans yetarliligini tekshirish
+    // Balans yetarliligini tekshirish
     if (parseFloat(user.balance) < paymentAmount) {
       await t.rollback();
       return res.status(400).json({
-        message: `Hisobingizda mablag' yetarli emas. Kerak: ${paymentAmount} so'm`,
+        message: `Mablag' yetarli emas. Balansingiz: ${user.balance} so'm. Kerak: ${paymentAmount} so'm`,
       });
     }
 
-    // 6. Pulni yechish va O'yinga qo'shish (Barchasi bir vaqtda)
-
-    // a) UserGame jadvaliga yozish
+    // To'lovni amalga oshirish
     await UserGame.create(
       {
         userId: user.id,
         gameId: game.id,
-        status: "paid", // To'langan statusi
+        status: "paid",
         paymentAmount: paymentAmount,
-        team: "A", // Hozircha default A jamoaga tushadi (keyin o'zgartirish mumkin)
+        team: "A",
       },
       { transaction: t }
     );
 
-    // b) Balansdan ayirish
     await user.update(
       {
         balance: parseFloat(user.balance) - paymentAmount,
@@ -162,49 +152,67 @@ exports.payFromBalance = async (req, res) => {
       { transaction: t }
     );
 
-    // c) O'yin ishtirokchilar sonini oshirish (+1)
     await game.increment("playersJoined", { transaction: t });
 
-    // d) Tarixga (Transaction) yozish
     await Transaction.create(
       {
         userId: user.id,
         amount: paymentAmount,
-        type: "expense", // Chiqim
-        description: `${game.title} o'yini uchun to'lov`,
+        type: "expense",
+        description: `${game.title} (Hamyondan)`,
         paymentMethod: "wallet",
       },
       { transaction: t }
     );
 
-    // Muvaffaqiyatli yakunlash
     await t.commit();
 
     return res.status(200).json({
-      message: "To'lov muvaffaqiyatli amalga oshirildi! O'yinga qo'shildingiz.",
+      message: "To'lov muvaffaqiyatli! O'yinga qo'shildingiz.",
       newBalance: parseFloat(user.balance) - paymentAmount,
     });
   } catch (error) {
-    // Xatolik bo'lsa, barcha o'zgarishlarni bekor qilish
     await t.rollback();
     console.error("PayFromBalance Error:", error);
     return res.status(500).json({ message: "Server xatosi: " + error.message });
   }
 };
 
-// --- PAYME/CLICK INVOICE YARATISH (TEST REJIM UCHUN) ---
+// 2. INVOICE YARATISH (PAYME/CLICK UCHUN STUB)
 exports.createInvoice = async (req, res) => {
-  // Bu qism faqat test rejimida link qaytarishi kerak
   try {
     const { provider } = req.body;
-    // Haqiqiy Payme/Click ulaganingizda bu yerga url generatsiya qilish kodini yozasiz
-    // Hozircha shunchaki "FAKE" link qaytaramiz frontend ishlashi uchun
-
+    // Hozircha test uchun fake link qaytaramiz
     const fakeUrl =
       provider === "click" ? "https://click.uz" : "https://payme.uz";
-
     res.json({ url: fakeUrl });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
+};
+
+// 3. TARIXNI OLISH (BU FUNKSIYA YETISHMAYOTGAN EDI)
+exports.getHistory = async (req, res) => {
+  try {
+    const { telegramId } = req.query;
+
+    const user = await User.findOne({
+      where: { telegramId: String(telegramId) },
+    });
+    if (!user) return res.json([]);
+
+    const history = await Transaction.findAll({
+      where: { userId: user.id },
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.json(history);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 4. BALANS TO'LDIRISH INVOICE (AGAR KERAK BO'LSA)
+exports.createTopUpInvoice = async (req, res) => {
+  res.json({ message: "TopUp funksiyasi", url: "#" });
 };
