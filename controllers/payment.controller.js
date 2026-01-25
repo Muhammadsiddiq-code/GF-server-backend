@@ -3,7 +3,6 @@ const { User, Game, Transaction, UserGame } = require("../models");
 const { v4: uuidv4 } = require("uuid");
 require("dotenv").config();
 
-// Botni faqat xabar yuborish uchun chaqiramiz
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false });
 const providerToken = process.env.PROVIDER_TOKEN;
 
@@ -14,9 +13,7 @@ const createInvoice = async (req, res) => {
 
     if (!telegramId) return res.status(400).json({ msg: "Telegram ID kerak" });
 
-    // MUHIM: Stringga o'tkazish
     const tgIdString = String(telegramId);
-
     let title, description, payload, prices;
 
     if (type === "GAME") {
@@ -24,7 +21,7 @@ const createInvoice = async (req, res) => {
       if (!game) return res.status(404).json({ msg: "O'yin topilmadi" });
 
       title = `To'lov: ${game.title}`;
-      description = `${game.title} o'yini uchun joy band qilish`;
+      description = `${game.title} o'yini uchun to'lov`;
       payload = `GAME_${gameId}_${tgIdString}`;
       prices = [{ label: game.title, amount: parseInt(amount) * 100 }];
     } else {
@@ -51,35 +48,25 @@ const createInvoice = async (req, res) => {
   }
 };
 
-// 2. Hamyon orqali to'lash (WALLET PAY)
+// 2. Hamyon orqali to'lash (YANGILANGAN LOGIKA)
 const payWithWallet = async (req, res) => {
   try {
     const { telegramId, gameId, amount } = req.body;
-    console.log("Wallet Pay Request:", req.body);
 
-    if (!telegramId) {
+    if (!telegramId)
       return res.status(400).json({ msg: "Telegram ID topilmadi" });
-    }
 
-    // 1. Xatolikni oldini olish uchun Stringga o'tkazamiz
     const tgIdString = String(telegramId);
 
-    // 2. Userni qidirish
+    // 1. User va Game ni topamiz
     const user = await User.findOne({ where: { telegramId: tgIdString } });
     const game = await Game.findByPk(gameId);
 
-    if (!user) {
-      return res
-        .status(404)
-        .json({
-          msg: "Foydalanuvchi bazadan topilmadi. Iltimos qayta ro'yxatdan o'ting.",
-        });
-    }
-    if (!game) {
-      return res.status(404).json({ msg: "O'yin topilmadi" });
+    if (!user || !game) {
+      return res.status(404).json({ msg: "User yoki O'yin topilmadi" });
     }
 
-    // 3. Balansni tekshirish
+    // 2. Balans yetarliligini tekshiramiz
     const payAmount = amount ? parseFloat(amount) : game.price;
 
     if (user.balance < payAmount) {
@@ -88,25 +75,38 @@ const payWithWallet = async (req, res) => {
         .json({ msg: "Hisobingizda mablag' yetarli emas." });
     }
 
-    // 4. Tranzaksiya boshlash (Barcha ishlar bir vaqtda bajarilishi uchun)
-    // Agar Transaction ishlatmasak ham ketma-ketlikni to'g'rilaymiz:
-
-    // A. User balansini yangilash
-    await user.update({ balance: user.balance - payAmount });
-
-    // B. UserGame yaratish (User ID integer formatda ketadi)
-    await UserGame.create({
-      userId: user.id, // Bu yerda Userning ID si (1, 2, 5...) ketadi
-      gameId: game.id,
-      status: "paid",
-      paymentAmount: payAmount,
-      team: "A",
+    // 3. User allaqachon bu o'yinda bormi?
+    let userGameEntry = await UserGame.findOne({
+      where: { userId: user.id, gameId: game.id },
     });
 
-    // C. O'yinchi sonini oshirish
-    await game.increment("playersJoined");
+    // --- TRANZAKSIYALAR BOSHLANISHI ---
 
-    // D. Tarixga yozish
+    // A) User balansidan pul yechish
+    await user.update({ balance: user.balance - payAmount });
+
+    // B) UserGame ni yangilash yoki yaratish
+    if (userGameEntry) {
+      // Agar avval bor bo'lsa (masalan Avans to'lagan), faqat summani qo'shamiz
+      const newTotal = parseFloat(userGameEntry.paymentAmount || 0) + payAmount;
+      await userGameEntry.update({
+        paymentAmount: newTotal,
+        status: "paid", // Har ehtimolga qarshi statusni yangilaymiz
+      });
+    } else {
+      // Agar yo'q bo'lsa (birinchi marta to'layotgan bo'lsa), yangi yaratamiz
+      await UserGame.create({
+        userId: user.id,
+        gameId: game.id,
+        status: "paid",
+        paymentAmount: payAmount,
+        team: "A",
+      });
+      // Faqat yangi qo'shilganda o'yinchi sonini oshiramiz
+      await game.increment("playersJoined");
+    }
+
+    // C) Tarixga yozish (Bu har doim yozilishi kerak, har bir to'lov uchun)
     await Transaction.create({
       userId: user.id,
       amount: payAmount,
@@ -136,7 +136,6 @@ const getUserWallet = async (req, res) => {
       include: [{ model: Transaction, as: "transactions" }],
     });
 
-    // Agar user topilsa-yu, karta raqami bo'lmasa
     if (user && !user.walletCardNumber) {
       const uniqueNum =
         "GF-" +
