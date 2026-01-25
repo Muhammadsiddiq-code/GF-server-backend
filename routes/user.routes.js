@@ -68,4 +68,6 @@ router.post("/login", userController.loginOrRegister);
 // Hamma userlarni olish
 router.get("/all", userController.getAllUsers);
 
+router.post("/update-balance", userController.updateBalance);
+
 module.exports = router;

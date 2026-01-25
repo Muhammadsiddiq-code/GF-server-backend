@@ -232,3 +232,44 @@ exports.getAllUsers = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+
+
+
+
+// Admin uchun balansni o'zgartirish
+exports.updateBalance = async (req, res) => {
+  try {
+    const { userId, amount, type } = req.body; // userId, amount (summa), type ('add' yoki 'subtract')
+
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ message: "User topilmadi" });
+
+    let newBalance = user.balance;
+    const changeAmount = parseFloat(amount);
+
+    if (type === 'add') {
+        newBalance += changeAmount;
+    } else if (type === 'subtract') {
+        newBalance -= changeAmount;
+    }
+
+    await user.update({ balance: newBalance });
+
+    // Transaction tarixiga yozib qo'yamiz (Admin tomonidan)
+    const { Transaction } = require("../models"); // Agar tepadagi importda bo'lmasa
+    if(Transaction) {
+        await Transaction.create({
+            userId: user.id,
+            amount: changeAmount,
+            type: type === 'add' ? 'income' : 'expense',
+            description: `Admin tomonidan ${type === 'add' ? 'qo\'shildi' : 'ayirildi'}`,
+            paymentMethod: 'admin'
+        });
+    }
+
+    res.json({ message: "Balans yangilandi", newBalance });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
