@@ -79,12 +79,12 @@ db.Sequelize = Sequelize;
 db.sequelize = sequelize;
 
 // --- MODELLARNI YUKLASH ---
-// Fayl nomlari sizning papkangizdagi bilan bir xil bo'lishi kerak
 db.User = require("./userModel")(sequelize, DataTypes);
 db.Game = require("./gameModel")(sequelize, DataTypes);
-db.UserGame = require("./UserGame")(sequelize, DataTypes); // UserGame model fayli
-db.Swiper = require("./swiper")(sequelize, DataTypes); // Agar swiper.js bo'lsa
+db.UserGame = require("./UserGame")(sequelize, DataTypes);
+db.Swiper = require("./swiper")(sequelize, DataTypes);
 db.Transaction = require("./transaction.model")(sequelize, DataTypes);
+// Agar service.model.js bo'lsa uni ham qo'shing, bo'lmasa shart emas
 
 // --- MUNOSABATLAR (RELATIONSHIPS) ---
 
@@ -93,11 +93,13 @@ db.User.belongsToMany(db.Game, {
   through: db.UserGame,
   foreignKey: "userId",
   otherKey: "gameId",
+  onDelete: "CASCADE", // User o'chsa, o'yinga yozilgani ham o'chadi
 });
 db.Game.belongsToMany(db.User, {
   through: db.UserGame,
   foreignKey: "gameId",
   otherKey: "userId",
+  onDelete: "CASCADE",
 });
 
 db.UserGame.belongsTo(db.Game, { foreignKey: "gameId" });
@@ -106,8 +108,17 @@ db.Game.hasMany(db.UserGame, { foreignKey: "gameId" });
 db.UserGame.belongsTo(db.User, { foreignKey: "userId" });
 db.User.hasMany(db.UserGame, { foreignKey: "userId" });
 
-// 2. Transaction (One-to-Many) - Userning ko'p tranzaksiyalari bo'ladi
-db.User.hasMany(db.Transaction, { foreignKey: "userId", as: "transactions" });
-db.Transaction.belongsTo(db.User, { foreignKey: "userId", as: "user" });
+// 2. Transaction (One-to-Many)
+// MUHIM: onDelete: 'CASCADE' qo'shildi. User o'chsa, tarixi ham o'chadi (xato bermasligi uchun)
+db.User.hasMany(db.Transaction, {
+  foreignKey: "userId",
+  as: "transactions",
+  onDelete: "CASCADE",
+});
+db.Transaction.belongsTo(db.User, {
+  foreignKey: "userId",
+  as: "user",
+  onDelete: "CASCADE",
+});
 
 module.exports = db;
