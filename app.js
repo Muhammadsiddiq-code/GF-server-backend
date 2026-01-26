@@ -248,6 +248,7 @@ const gameRoutes = require("./routes/games.routes");
 const userRoutes = require("./routes/user.routes");
 const userGameRoutes = require("./routes/userGame.routes");
 const paymentRoutes = require("./routes/payment.routes");
+const path = require("path");
 
 dotenv.config();
 
@@ -291,6 +292,9 @@ app.use((req, res, next) => {
   req.bot = bot; // Endi istalgan joyda req.bot.sendMessage() qilish mumkin
   next();
 });
+
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // --- API Routes ---
 app.use("/api/swiper", swiperRoutes);
