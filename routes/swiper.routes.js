@@ -130,7 +130,7 @@
 const express = require("express");
 const router = express.Router();
 const swiper = require("../controllers/swiper.controller");
-const upload = require("../middleware/upload"); // Multer ulash
+const upload = require("../middleware/upload");
 
 /**
  * @swagger
@@ -161,13 +161,12 @@ const upload = require("../middleware/upload"); // Multer ulash
  * description: Yoki rasm URL manzilini yozish uchun
  * responses:
  * 201:
- * description: Swiper qo‘shildi
+ * description: Swiper muvaffaqiyatli qo‘shildi
  * 400:
  * description: Malumot yetarli emas
  * 500:
- * description: Server error
+ * description: Server xatosi
  */
-// "image" - bu frontenddan yuboriladigan fayl keyi (formData.append('image', file))
 router.post("/", upload.single("image"), swiper.createSwiper);
 
 /**
@@ -178,7 +177,9 @@ router.post("/", upload.single("image"), swiper.createSwiper);
  * summary: Barcha swiperlarni olish
  * responses:
  * 200:
- * description: Ro'yxat
+ * description: Swiperlar ro'yxati
+ * 500:
+ * description: Server xatosi
  */
 router.get("/", swiper.getSwipers);
 
@@ -194,9 +195,14 @@ router.get("/", swiper.getSwipers);
  * required: true
  * schema:
  * type: integer
+ * description: Swiper ID raqami
  * responses:
  * 200:
  * description: Topildi
+ * 404:
+ * description: Topilmadi
+ * 500:
+ * description: Server xatosi
  */
 router.get("/:id", swiper.getSwiperById);
 
@@ -212,9 +218,14 @@ router.get("/:id", swiper.getSwiperById);
  * required: true
  * schema:
  * type: integer
+ * description: Swiper ID raqami
  * responses:
  * 200:
  * description: O'chirildi
+ * 404:
+ * description: Topilmadi
+ * 500:
+ * description: Server xatosi
  */
 router.delete("/:id", swiper.deleteSwiper);
 
