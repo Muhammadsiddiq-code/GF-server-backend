@@ -168,7 +168,7 @@ const gameRoutes = require("./routes/games.routes");
 const userRoutes = require("./routes/user.routes");
 const userGameRoutes = require("./routes/userGame.routes");
 const paymentRoutes = require("./routes/payment.routes");
-const authRoutes = require("./routes/auth.routes"); // ✅ Auth routelar (Login)
+const authRoutes = require("./routes/auth.routes"); // ✅ YANGI: Auth routelar (Admin uchun)
 
 dotenv.config();
 
@@ -178,7 +178,7 @@ const token = process.env.TELEGRAM_BOT_TOKEN;
 
 app.set("trust proxy", true);
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true })); // ✅ QOSHIMCHA: Form data uchun
 app.use(cors({ origin: "*" }));
 app.options("*", cors());
 
@@ -208,13 +208,13 @@ if (token) {
   console.error("❌ TELEGRAM_BOT_TOKEN topilmadi!");
 }
 
-// --- MIDDLEWARE: BOTNI CONTROLLERLARGA UZATISH ---
+// --- MUHIM: BOTNI CONTROLLERLARGA UZATISH (MIDDLEWARE) ---
 app.use((req, res, next) => {
   req.bot = bot;
   next();
 });
 
-// --- STATIC FILES (Rasmlar uchun) ---
+// --- STATIC FILES ---
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // --- API Routes ---
@@ -223,7 +223,10 @@ app.use("/api/games", gameRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/user-game", userGameRoutes);
 app.use("/api/payment", paymentRoutes);
-app.use("/api/auth", authRoutes); // ✅ Login va Admin yaratish uchun
+
+// ⚠️ O'ZGARISH: Eski bittalik login o'rniga to'liq routerni ulaymiz
+// Bu yerda endi /api/auth/login (User) va /api/auth/admin-login (Admin) ikkalasi ham ishlaydi
+app.use("/api/auth", authRoutes);
 
 // Service routes
 const serviceRouter = express.Router();
@@ -232,7 +235,6 @@ serviceRouter.get("/", serviceController.getAllServices);
 serviceRouter.delete("/:id", serviceController.deleteService);
 app.use("/api/services", serviceRouter);
 
-// Swagger
 setupSwagger(app);
 
 // ------------------------------------------------------------------
@@ -250,15 +252,11 @@ if (bot) {
   bot.on("successful_payment", async (msg) => {
     const payment = msg.successful_payment;
     const payload = payment.invoice_payload;
-    // const amountSum = payment.total_amount / 100;
 
     try {
-      // Payloadni tekshirish va logikani bajarish
-      // Bu yerda o'zingizning to'lovni tasdiqlash logikangiz bo'lishi kerak
-      // Masalan: await paymentController.confirmPayment(payload, amountSum);
-
+      // To'lov logikangiz shu yerda qolaveradi...
       console.log("To'lov muvaffaqiyatli:", payload);
-      await bot.sendMessage(msg.chat.id, "✅ To'lov qabul qilindi! Rahmat.");
+      await bot.sendMessage(msg.chat.id, "✅ To'lov qabul qilindi!");
     } catch (e) {
       console.error("Payment Error:", e);
     }
@@ -266,14 +264,16 @@ if (bot) {
 }
 
 // ------------------------------------------------------------------
-// --- SERVER START & DB SYNC ---
+// --- SERVER START ---
 // ------------------------------------------------------------------
 sequelize
-  .sync({ alter: true }) // Bazani yangilash
+  .sync({ alter: true })
   .then(async () => {
+    // ✅ ASYNC qo'shildi
     console.log("✅ Baza bilan ulandi.");
 
-    // ✅ DEFAULT ADMINNI TEKSHIRISH VA YARATISH
+    // ✅ YANGI: Default Adminni tekshirish va yaratish
+    // Agar baza bo'sh bo'lsa, 'admin' / '123' ni yaratadi
     if (authController.initDefaultAdmin) {
       await authController.initDefaultAdmin();
     }
