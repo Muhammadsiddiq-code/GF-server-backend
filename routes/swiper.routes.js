@@ -135,97 +135,116 @@ const upload = require("../middleware/upload");
 /**
  * @swagger
  * tags:
- * name: Swiper
- * description: Home.jsx dagi swiper (Rasm fayl yoki URL)
+ *   name: Swiper
+ *   description: Home sahifadagi Swiper rasmlari (URL yoki galereyadan upload)
  */
 
 /**
  * @swagger
  * /api/swiper:
- * post:
- * tags: [Swiper]
- * summary: Yangi swiper qo‘shish (Fayl yoki URL)
- * requestBody:
- * required: true
- * content:
- * multipart/form-data:
- * schema:
- * type: object
- * properties:
- * image:
- * type: string
- * format: binary
- * description: Galereyadan rasm yuklash uchun
- * img:
- * type: string
- * description: Yoki rasm URL manzilini yozish uchun
- * responses:
- * 201:
- * description: Swiper muvaffaqiyatli qo‘shildi
- * 400:
- * description: Malumot yetarli emas
- * 500:
- * description: Server xatosi
+ *   post:
+ *     tags: [Swiper]
+ *     summary: Yangi swiper qo‘shish (URL yoki fayl)
+ *     description: |
+ *       Swiper rasm qo‘shish.
+ *       - Galereyadan rasm yuborish uchun `image` field ishlatiladi
+ *       - Agar URL bo‘lsa `img` field yuboriladi
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Galereyadan rasm yuklash
+ *               img:
+ *                 type: string
+ *                 example: https://example.com/image.jpg
+ *                 description: Rasm URL manzili
+ *     responses:
+ *       201:
+ *         description: Swiper muvaffaqiyatli qo‘shildi
+ *       400:
+ *         description: Rasm fayli yoki URL talab qilinadi
+ *       500:
+ *         description: Server xatosi
  */
 router.post("/", upload.single("image"), swiper.createSwiper);
 
 /**
  * @swagger
  * /api/swiper:
- * get:
- * tags: [Swiper]
- * summary: Barcha swiperlarni olish
- * responses:
- * 200:
- * description: Swiperlar ro'yxati
- * 500:
- * description: Server xatosi
+ *   get:
+ *     tags: [Swiper]
+ *     summary: Barcha swiperlarni olish
+ *     responses:
+ *       200:
+ *         description: Swiperlar ro‘yxati
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                     example: 1
+ *                   img:
+ *                     type: string
+ *                     example: /uploads/12345.jpg
+ *       500:
+ *         description: Server xatosi
  */
 router.get("/", swiper.getSwipers);
 
 /**
  * @swagger
  * /api/swiper/{id}:
- * get:
- * tags: [Swiper]
- * summary: ID bo‘yicha olish
- * parameters:
- * - in: path
- * name: id
- * required: true
- * schema:
- * type: integer
- * description: Swiper ID raqami
- * responses:
- * 200:
- * description: Topildi
- * 404:
- * description: Topilmadi
- * 500:
- * description: Server xatosi
+ *   get:
+ *     tags: [Swiper]
+ *     summary: Swiperni ID bo‘yicha olish
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Swiper ID raqami
+ *     responses:
+ *       200:
+ *         description: Swiper topildi
+ *       404:
+ *         description: Swiper topilmadi
+ *       500:
+ *         description: Server xatosi
  */
 router.get("/:id", swiper.getSwiperById);
 
 /**
  * @swagger
  * /api/swiper/{id}:
- * delete:
- * tags: [Swiper]
- * summary: O'chirish
- * parameters:
- * - in: path
- * name: id
- * required: true
- * schema:
- * type: integer
- * description: Swiper ID raqami
- * responses:
- * 200:
- * description: O'chirildi
- * 404:
- * description: Topilmadi
- * 500:
- * description: Server xatosi
+ *   delete:
+ *     tags: [Swiper]
+ *     summary: Swiperni o‘chirish
+ *     description: Agar rasm lokal bo‘lsa (`/uploads/`), fayl ham o‘chiriladi
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Swiper ID raqami
+ *     responses:
+ *       200:
+ *         description: Swiper muvaffaqiyatli o‘chirildi
+ *       404:
+ *         description: Swiper topilmadi
+ *       500:
+ *         description: Server xatosi
  */
 router.delete("/:id", swiper.deleteSwiper);
 

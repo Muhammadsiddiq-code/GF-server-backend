@@ -79,77 +79,77 @@ exports.createSwiper = async (req, res) => {
   try {
     let imagePath = null;
 
-    // 1. Agar fayl yuklangan bo'lsa (Galereyadan)
+    // 1️⃣ Galereyadan fayl kelsa
     if (req.file) {
-      // Backend to'liq URL qaytarishi uchun (masalan: http://localhost:5000/uploads/nomi.jpg)
-      // Yoki shunchaki "/uploads/nomi.jpg" qilib saqlash mumkin.
-      // Hozircha nisbiy yo'l saqlaymiz:
       imagePath = `/uploads/${req.file.filename}`;
     }
-    // 2. Agar shunchaki URL yuborilgan bo'lsa
-    else if (req.body.img) {
+    // 2️⃣ URL kelsa
+    else if (req.body.img && req.body.img.startsWith("http")) {
       imagePath = req.body.img;
     }
 
     if (!imagePath) {
-      return res
-        .status(400)
-        .json({ message: "Rasm fayli yoki URL talab qilinadi" });
+      return res.status(400).json({
+        message: "Rasm fayli yoki URL majburiy",
+      });
     }
 
-    const newSwiper = await Swiper.create({ img: imagePath });
+    const swiper = await Swiper.create({ img: imagePath });
 
     res.status(201).json({
-      message: "Swiper muvaffaqiyatli yaratildi",
-      swiper: newSwiper,
+      message: "Swiper muvaffaqiyatli qo‘shildi",
+      swiper,
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({
       message: "Server xatosi",
-      err: err.message,
+      error: err.message,
     });
   }
 };
 
 exports.getSwipers = async (req, res) => {
   try {
-    const swipers = await Swiper.findAll();
-
-    // Agar serverda to'g'ri ko'rinishi kerak bo'lsa, domen qo'shib berishimiz mumkin (Optional)
-    // Frontend o'zi domen qo'shib olgani ma'qul.
-
+    const swipers = await Swiper.findAll({
+      order: [["id", "DESC"]],
+    });
     res.status(200).json(swipers);
   } catch (err) {
-    res.status(500).json({ message: "Server error", err: err.message });
+    res.status(500).json({ message: "Server xatosi" });
   }
 };
 
 exports.getSwiperById = async (req, res) => {
   try {
     const swiper = await Swiper.findByPk(req.params.id);
-    if (!swiper) return res.status(404).json({ message: "Swiper topilmadi" });
-    res.status(200).json(swiper);
+    if (!swiper) {
+      return res.status(404).json({ message: "Swiper topilmadi" });
+    }
+    res.json(swiper);
   } catch (err) {
-    res.status(500).json({ message: "Server error", err: err.message });
+    res.status(500).json({ message: "Server xatosi" });
   }
 };
 
 exports.deleteSwiper = async (req, res) => {
   try {
     const swiper = await Swiper.findByPk(req.params.id);
-    if (!swiper) return res.status(404).json({ message: "Swiper topilmadi" });
+    if (!swiper) {
+      return res.status(404).json({ message: "Swiper topilmadi" });
+    }
 
-    // Agar bu lokal fayl bo'lsa ("/uploads/" bilan boshlansa), uni papkadan ham o'chiramiz
-    if (swiper.img && swiper.img.startsWith("/uploads/")) {
+    // agar lokal rasm bo‘lsa — faylni ham o‘chiramiz
+    if (swiper.img.startsWith("/uploads/")) {
       const filePath = path.join(__dirname, "..", swiper.img);
       if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath); // Faylni o'chirish
+        fs.unlinkSync(filePath);
       }
     }
 
     await swiper.destroy();
-    res.status(200).json({ message: "Ochirildi, rasm ham tozalandi" });
+    res.json({ message: "Swiper o‘chirildi" });
   } catch (err) {
-    res.status(500).json({ message: "Server error", err: err.message });
+    res.status(500).json({ message: "Server xatosi" });
   }
 };

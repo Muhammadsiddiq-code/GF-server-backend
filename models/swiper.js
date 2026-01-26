@@ -7,8 +7,9 @@ module.exports = (sequelize, DataTypes) => {
     },
     img: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
   });
+
   return Swiper;
 };
