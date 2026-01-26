@@ -77,77 +77,66 @@
 
 
 
-const { Admin } = require("../models"); // Admin modelini chaqiramiz (User emas!)
+const db = require("../models");
+const Admin = db.Admin;
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-// Maxfiy kalit
 const JWT_SECRET = process.env.JWT_SECRET || "super_secret_key_gf_admin";
 
-// 1. LOGIN (Kirish)
+// 1. LOGIN
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Tekshiruv: Ma'lumotlar keldimi?
-    if (!username || !password) {
-      return res
-        .status(400)
-        .json({ message: "Login va parol talab qilinadi!" });
-    }
-
-    // Adminni qidiramiz
+    // Adminni qidirish
     const admin = await Admin.findOne({ where: { username } });
     if (!admin) {
       return res.status(404).json({ message: "Admin topilmadi!" });
     }
 
-    // Parolni tekshiramiz
-    const isPasswordValid = await bcrypt.compare(password, admin.password);
-    if (!isPasswordValid) {
+    // Parolni tekshirish
+    const passwordIsValid = await bcrypt.compare(password, admin.password);
+    if (!passwordIsValid) {
       return res.status(401).json({ message: "Parol noto'g'ri!" });
     }
 
-    // Token yaratamiz
-    const token = jwt.sign({ id: admin.id, role: "admin" }, JWT_SECRET, {
-      expiresIn: "24h",
+    // Token yaratish
+    const token = jwt.sign({ id: admin.id }, JWT_SECRET, {
+      expiresIn: "24h", // 24 soat
     });
 
     res.status(200).json({
-      message: "Xush kelibsiz!",
+      id: admin.id,
+      username: admin.username,
       token: token,
-      admin: {
-        id: admin.id,
-        username: admin.username,
-      },
     });
   } catch (err) {
-    console.error("Login Error:", err);
-    res.status(500).json({ message: "Server xatosi", error: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
-// 2. ADMIN YARATISH (Bir martalik - "kolizey" ni yaratish uchun)
-exports.createAdmin = async (req, res) => {
+// 2. AVTOMATIK DEFAULT ADMIN YARATISH (App.js da chaqiriladi)
+exports.initDefaultAdmin = async () => {
   try {
-    const { username, password } = req.body;
+    const count = await Admin.count();
 
-    if (!username || !password) {
-      return res.status(400).json({ message: "Login va parol kerak" });
+    // Agar adminlar soni 0 bo'lsa, bitta yaratamiz
+    if (count === 0) {
+      console.log("⚠️ Admin topilmadi. Default admin yaratilmoqda...");
+
+      const hashedPassword = await bcrypt.hash("123", 8); // Parol: 123
+
+      await Admin.create({
+        username: "admin", // Login: admin
+        password: hashedPassword,
+      });
+
+      console.log("✅ Default Admin yaratildi! Login: 'admin', Parol: '123'");
+    } else {
+      console.log("✅ Admin mavjud. Yaratish shart emas.");
     }
-
-    // Parolni hashlaymiz
-    const hashedPassword = await bcrypt.hash(password, 8);
-
-    const newAdmin = await Admin.create({
-      username,
-      password: hashedPassword,
-    });
-
-    res
-      .status(201)
-      .json({ message: "Admin yaratildi", admin: newAdmin.username });
-  } catch (err) {
-    res.status(500).json({ message: "Xatolik", error: err.message });
+  } catch (error) {
+    console.error("❌ Default admin yaratishda xatolik:", error);
   }
 };

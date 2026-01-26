@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const authController = require("../controllers/auth.controller");
+const controller = require("../controllers/auth.controller");
 
-router.post("/login", authController.login);
-router.post("/create-admin", authController.createAdmin); // Admin yaratish uchun yo'l
+// /api/auth/login
+router.post("/login", controller.login);
 
 module.exports = router;

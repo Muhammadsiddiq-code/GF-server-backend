@@ -10,5 +10,6 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
   });
+
   return Admin;
 };

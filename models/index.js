@@ -84,6 +84,9 @@ db.Game = require("./gameModel")(sequelize, DataTypes);
 db.UserGame = require("./UserGame")(sequelize, DataTypes);
 db.Swiper = require("./swiper")(sequelize, DataTypes);
 db.Transaction = require("./transaction.model")(sequelize, DataTypes);
+
+// Modellarni ulash
+db.Admin = require("./admin.model.js")(sequelize, Sequelize);
 // Agar service.model.js bo'lsa uni ham qo'shing, bo'lmasa shart emas
 
 // --- MUNOSABATLAR (RELATIONSHIPS) ---
