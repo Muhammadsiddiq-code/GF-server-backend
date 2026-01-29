@@ -332,7 +332,8 @@ const userRoutes = require("./routes/user.routes");
 const userGameRoutes = require("./routes/userGame.routes");
 const paymentRoutes = require("./routes/payment.routes");
 const authRoutes = require("./routes/auth.routes");
-const notificationRoutes = require("./routes/notification.routes"); // ✅ YANGI
+const notificationRoutes = require("./routes/notification.routes");
+const paymeRoutes = require("./routes/payme.routes"); // PAYME merchant API
 
 dotenv.config();
 
@@ -387,7 +388,8 @@ app.use("/api/users", userRoutes);
 app.use("/api/user-game", userGameRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/notifications", notificationRoutes); // ✅ YANGI: Front endga ulash
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/payme", paymeRoutes); // PAYME merchant API
 
 // Service Routes
 const serviceRouter = express.Router();

@@ -23,16 +23,6 @@
 
 // module.exports = UserGame;
 
-
-
-
-
-
-
-
-
-
-
 module.exports = (sequelize, DataTypes) => {
   const UserGame = sequelize.define("UserGame", {
     id: {
@@ -44,7 +34,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: "Users", // Bazadagi jadval nomi (odatda ko'plikda bo'ladi)
+        model: "Users",
         key: "id",
       },
     },
@@ -56,13 +46,31 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       defaultValue: "A",
     },
-    status: {
-      type: DataTypes.STRING,
-      defaultValue: "signed_up", // yoki 'paid'
+
+    // To'lov holati: pending (kutilmoqda), advance_paid (30% to'langan), fully_paid (to'liq to'langan)
+    paymentStatus: {
+      type: DataTypes.ENUM("pending", "advance_paid", "fully_paid"),
+      defaultValue: "pending",
     },
-    paymentAmount: {
+
+    totalPrice: {
       type: DataTypes.FLOAT,
       defaultValue: 0,
+    },
+
+    advancePaid: {
+      type: DataTypes.FLOAT,
+      defaultValue: 0,
+    },
+
+    remainingAmount: {
+      type: DataTypes.FLOAT,
+      defaultValue: 0,
+    },
+
+    remainingDeadline: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   });
 

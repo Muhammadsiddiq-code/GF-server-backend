@@ -123,8 +123,10 @@ db.UserGame = require("./UserGame")(sequelize, DataTypes);
 db.Swiper = require("./swiper")(sequelize, DataTypes);
 db.Transaction = require("./transaction.model")(sequelize, DataTypes);
 db.Admin = require("./admin.model.js")(sequelize, Sequelize);
-// ✅ YANGI: Notification modeli
 db.Notification = require("./notification.model")(sequelize, DataTypes);
+// YANGI: PAYME va CLICK transaction modellari
+db.ClickTransaction = require("./clickTransaction.model")(sequelize, DataTypes);
+db.PaymeTransaction = require("./paymeTransaction.model")(sequelize, DataTypes);
 
 // --- MUNOSABATLAR (RELATIONSHIPS) ---
 
@@ -170,6 +172,44 @@ db.User.hasMany(db.Notification, {
 db.Notification.belongsTo(db.User, {
   foreignKey: "userId",
   as: "user",
+});
+
+// 4. ClickTransaction (One-to-One with Transaction, Many-to-One with User)
+db.User.hasMany(db.ClickTransaction, {
+  foreignKey: "userId",
+  as: "clickTransactions",
+  onDelete: "CASCADE",
+});
+db.ClickTransaction.belongsTo(db.User, {
+  foreignKey: "userId",
+  as: "user",
+});
+db.Transaction.hasOne(db.ClickTransaction, {
+  foreignKey: "transactionId",
+  as: "clickTransaction",
+});
+db.ClickTransaction.belongsTo(db.Transaction, {
+  foreignKey: "transactionId",
+  as: "transaction",
+});
+
+// 5. PaymeTransaction (One-to-One with Transaction, Many-to-One with User)
+db.User.hasMany(db.PaymeTransaction, {
+  foreignKey: "userId",
+  as: "paymeTransactions",
+  onDelete: "CASCADE",
+});
+db.PaymeTransaction.belongsTo(db.User, {
+  foreignKey: "userId",
+  as: "user",
+});
+db.Transaction.hasOne(db.PaymeTransaction, {
+  foreignKey: "transactionId",
+  as: "paymeTransaction",
+});
+db.PaymeTransaction.belongsTo(db.Transaction, {
+  foreignKey: "transactionId",
+  as: "transaction",
 });
 
 module.exports = db;
