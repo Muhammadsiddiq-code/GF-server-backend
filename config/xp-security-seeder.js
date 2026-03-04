@@ -1,14 +1,14 @@
 /**
  * XP Conversion Security Settings Database Seeder
- * 
+ *
  * Bu fayl XP konvertatsiya havfsizlik sozlamalarini database'ga
  * qo'shish uchun ishlatiladigan script'dir.
- * 
+ *
  * USAGE:
  * ------
  * const { Setting } = require("../models");
  * const initXpSecuritySettings = require("./xp-security-seeder");
- * 
+ *
  * // Startup'da yoki seeders orqali:
  * await initXpSecuritySettings(Setting);
  */
@@ -32,9 +32,9 @@ const DESCRIPTIONS = {
 };
 
 /**
- * Ushbu funk Setting'larni database'ga initialize qiladi
- * Agar setting mavjud bo'lsa, update qiladi
- * Agar mavjud bo'lmasa, create qiladi
+ * Ushbu funk Setting'larni database'ga initialize qiladi.
+ * Mavjud qiymatlarni o'zgartirmaydi, faqat yetishmayotganlarini yaratadi
+ * va description kerak bo'lsa yangilaydi.
  */
 const initXpSecuritySettings = async (Setting) => {
   try {
@@ -42,35 +42,40 @@ const initXpSecuritySettings = async (Setting) => {
 
     for (const [key, value] of Object.entries(XP_CONVERSION_SETTINGS)) {
       const description = DESCRIPTIONS[key] || "";
-
-      await Setting.upsert(
-        {
+      const [setting, created] = await Setting.findOrCreate({
+        where: { key },
+        defaults: {
           key,
           value: String(value),
           description,
         },
-        {
-          where: { key },
-        }
-      );
+      });
 
-      console.log(`✓ Setting initialized: ${key} = ${value}`);
+      if (!created && setting.description !== description) {
+        await setting.update({ description });
+      }
+
+      console.log(
+        created
+          ? `[XP Settings] Created: ${key} = ${value}`
+          : `[XP Settings] Preserved: ${key} = ${setting.value}`
+      );
     }
 
-    console.log("[XP Settings] ✅ All XP conversion security settings initialized successfully");
+    console.log("[XP Settings] All XP conversion security settings initialized successfully");
     return true;
   } catch (error) {
-    console.error("[XP Settings] ❌ Error initializing settings:", error.message);
+    console.error("[XP Settings] Error initializing settings:", error.message);
     throw error;
   }
 };
 
 /**
  * App startup'da xarxalnatirish (app.js yoki index.js'da):
- * 
+ *
  * const { Setting } = require("./models");
  * const initXpSecuritySettings = require("./config/xp-security-seeder");
- * 
+ *
  * // Database'ga ulanishdan so'ng
  * await initXpSecuritySettings(Setting);
  */
