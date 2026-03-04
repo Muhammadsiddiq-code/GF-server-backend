@@ -115,6 +115,7 @@ db.PaymeTransaction = PaymeTransactionModel(sequelize, DataTypes);
 db.Admin = require("./admin.model.js")(sequelize, Sequelize);
 db.Referral = require("./referral.model")(sequelize, DataTypes);
 db.Setting = require("./setting.model")(sequelize, DataTypes);
+db.ClickTransaction = require("./clickTransaction.model")(sequelize, DataTypes);
 
 // --- MUNOSABATLAR (RELATIONSHIPS) ---
 
@@ -169,6 +170,17 @@ db.Referral.belongsTo(db.User, {
 db.Referral.belongsTo(db.User, {
   foreignKey: "referredUserId",
   as: "referred",
+});
+
+// 4. ClickTransaction (One-to-Many)
+db.User.hasMany(db.ClickTransaction, {
+  foreignKey: "userId",
+  as: "clickTransactions",
+  onDelete: "CASCADE",
+});
+db.ClickTransaction.belongsTo(db.User, {
+  foreignKey: "userId",
+  onDelete: "CASCADE",
 });
 
 module.exports = db;

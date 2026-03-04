@@ -451,6 +451,10 @@ app.use("/api/referral", referralRoutes);
 // Payme JSON-RPC callback (rate limit qo'ymaymiz — Payme serveridan keladi)
 app.use("/api/payme", paymeRoutes);
 
+// CLICK SHOP API callback (rate limit qo'ymaymiz — CLICK serveridan keladi)
+const clickRoutes = require("./routes/click.routes");
+app.use("/api/payments/click", clickRoutes);
+
 setupSwagger(app);
 
 app.use((err, req, res, next) => {

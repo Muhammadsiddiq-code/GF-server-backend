@@ -332,4 +332,78 @@ router.post("/payme/game-checkout", paymentController.createGamePaymeCheckout);
  */
 router.get("/all", paymentController.getAllTransactions);
 
+/**
+ * @swagger
+ * /api/payment/click/checkout-url:
+ *   post:
+ *     summary: CLICK checkout URL olish (Hamyon to'ldirish)
+ *     tags: [Payment]
+ *     description: |
+ *       Frontend uchun CLICK to'lov sahifasiga yo'naltirish URL qaytaradi.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - telegramId
+ *               - amount
+ *             properties:
+ *               telegramId:
+ *                 type: string
+ *                 example: "123456789"
+ *               amount:
+ *                 type: number
+ *                 example: 50000
+ *     responses:
+ *       200:
+ *         description: CLICK URL
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 clickUrl:
+ *                   type: string
+ *                 amount:
+ *                   type: number
+ */
+router.post("/click/checkout-url", paymentController.getClickCheckoutUrl);
+
+/**
+ * @swagger
+ * /api/payment/click/game-checkout:
+ *   post:
+ *     summary: CLICK orqali o'yinga to'g'ridan-to'g'ri to'lash
+ *     tags: [Payment]
+ *     description: |
+ *       O'yin uchun CLICK checkout URL qaytaradi.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - telegramId
+ *               - gameId
+ *               - amount
+ *             properties:
+ *               telegramId:
+ *                 type: string
+ *               gameId:
+ *                 type: integer
+ *               amount:
+ *                 type: number
+ *               team:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: CLICK game checkout URL
+ */
+router.post("/click/game-checkout", paymentController.createGameClickCheckout);
+
 module.exports = router;

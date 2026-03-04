@@ -531,6 +531,11 @@ const crypto = require("crypto");
 // --- XAVFSIZLIK: Ruxsat etilgan maximum to'lov (UZS) ---
 const MAX_PAYMENT_AMOUNT = 50_000_000; // 50 mln UZS
 
+// CLICK sozlamalari
+const CLICK_SERVICE_ID = () => process.env.CLICK_SERVICE_ID;
+const CLICK_MERCHANT_ID = () => process.env.CLICK_MERCHANT_ID;
+const CLICK_BASE_URL = "https://my.click.uz/services/pay";
+
 // --- HELPER: 16 raqamli karta raqam generatsiya ---
 const generateNumericCard = () => {
   // 8600 bilan boshlaydigan 16 raqamli karta (Uzcard format)
@@ -961,6 +966,104 @@ const getAllTransactions = async (req, res) => {
   }
 };
 
+// ------------------------------------------------------------
+// 7) CLICK CHECKOUT URL (Hamyon to'ldirish uchun)
+// ------------------------------------------------------------
+const getClickCheckoutUrl = async (req, res) => {
+  try {
+    const { telegramId, amount } = req.body;
+
+    const serviceId = CLICK_SERVICE_ID();
+    const merchantId = CLICK_MERCHANT_ID();
+
+    if (!serviceId || !merchantId) {
+      return res.status(500).json({ msg: "CLICK_SERVICE_ID yoki CLICK_MERCHANT_ID .env da yo'q" });
+    }
+
+    if (!telegramId) return res.status(400).json({ msg: "telegramId topilmadi" });
+
+    const amountSom = Number(amount);
+    if (!Number.isFinite(amountSom) || amountSom <= 0) {
+      return res.status(400).json({ msg: "amount noto'g'ri" });
+    }
+    if (amountSom > MAX_PAYMENT_AMOUNT) {
+      return res.status(400).json({ msg: `Maximum: ${MAX_PAYMENT_AMOUNT.toLocaleString()} UZS` });
+    }
+
+    const user = await User.findOne({ where: { telegramId: String(telegramId) } });
+    if (!user) return res.status(404).json({ msg: "User topilmadi" });
+
+    // merchant_trans_id = telegramId (wallet topup)
+    const merchantTransId = String(telegramId);
+    const returnUrl = encodeURIComponent("https://goforfun.vercel.app");
+
+    const clickUrl = `${CLICK_BASE_URL}?service_id=${serviceId}&merchant_id=${merchantId}&amount=${amountSom}&transaction_param=${merchantTransId}&return_url=${returnUrl}`;
+
+    return res.json({
+      success: true,
+      clickUrl,
+      amount: amountSom,
+    });
+  } catch (error) {
+    console.error("Click checkout-url error:", error);
+    return res.status(500).json({ msg: error.message });
+  }
+};
+
+// ------------------------------------------------------------
+// 8) CLICK GAME CHECKOUT URL (O'yinga to'g'ridan-to'g'ri to'lash)
+// ------------------------------------------------------------
+const createGameClickCheckout = async (req, res) => {
+  try {
+    const { telegramId, gameId, amount, team } = req.body;
+
+    const serviceId = CLICK_SERVICE_ID();
+    const merchantId = CLICK_MERCHANT_ID();
+
+    if (!serviceId || !merchantId) {
+      return res.status(500).json({ msg: "CLICK_SERVICE_ID yoki CLICK_MERCHANT_ID .env da yo'q" });
+    }
+
+    if (!telegramId) return res.status(400).json({ msg: "telegramId topilmadi" });
+    if (!gameId) return res.status(400).json({ msg: "gameId topilmadi" });
+
+    const amountSom = Number(amount);
+    if (!Number.isFinite(amountSom) || amountSom <= 0) {
+      return res.status(400).json({ msg: "amount noto'g'ri" });
+    }
+
+    const user = await User.findOne({ where: { telegramId: String(telegramId) } });
+    if (!user) return res.status(404).json({ msg: "User topilmadi" });
+
+    const game = await Game.findByPk(gameId);
+    if (!game) return res.status(404).json({ msg: "O'yin topilmadi" });
+
+    // Joylar tekshiruvi
+    const totalPlayers = game.totalPlayers || 14;
+    const existingEntry = await UserGame.findOne({ where: { userId: user.id, gameId: game.id } });
+    const isGameFull = (game.playersJoined || 0) >= totalPlayers;
+    if (isGameFull && !existingEntry) {
+      return res.status(400).json({ msg: "Bu o'yinda joylar to'lgan" });
+    }
+
+    // merchant_trans_id = GAME_{gameId}_{telegramId}_{team}
+    const safeTeam = team ? String(team).replace(/[^a-zA-Z0-9]/g, "").substring(0, 20) : "NA";
+    const merchantTransId = `GAME_${gameId}_${telegramId}_${safeTeam}`;
+    const returnUrl = encodeURIComponent("https://goforfun.vercel.app");
+
+    const clickUrl = `${CLICK_BASE_URL}?service_id=${serviceId}&merchant_id=${merchantId}&amount=${amountSom}&transaction_param=${merchantTransId}&return_url=${returnUrl}`;
+
+    return res.json({
+      success: true,
+      clickUrl,
+      amount: amountSom,
+    });
+  } catch (error) {
+    console.error("Click game checkout error:", error);
+    return res.status(500).json({ msg: error.message });
+  }
+};
+
 module.exports = {
   createInvoice,
   payWithWallet,
@@ -968,4 +1071,6 @@ module.exports = {
   getPaymeCheckoutUrl,
   createGamePaymeCheckout,
   getAllTransactions,
+  getClickCheckoutUrl,
+  createGameClickCheckout,
 };
