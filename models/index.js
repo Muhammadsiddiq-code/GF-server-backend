@@ -105,17 +105,18 @@ db.Game = require("./gameModel")(sequelize, DataTypes);
 db.UserGame = require("./UserGame")(sequelize, DataTypes);
 db.Swiper = require("./swiper")(sequelize, DataTypes);
 db.Transaction = require("./transaction.model")(sequelize, DataTypes);
-// server/models/index.js (ichiga qo'shish)
 const PaymeTransactionModel = require("./paymeTransaction.model");
-
-// ...
 db.PaymeTransaction = PaymeTransactionModel(sequelize, DataTypes);
 
-// Modellarni ulash
+// Core models
 db.Admin = require("./admin.model.js")(sequelize, Sequelize);
 db.Referral = require("./referral.model")(sequelize, DataTypes);
 db.Setting = require("./setting.model")(sequelize, DataTypes);
 db.ClickTransaction = require("./clickTransaction.model")(sequelize, DataTypes);
+
+// Notifications
+db.Notification = require("./notification.model")(sequelize, DataTypes);
+db.UserNotification = require("./userNotification.model")(sequelize, DataTypes);
 
 // --- MUNOSABATLAR (RELATIONSHIPS) ---
 
@@ -181,6 +182,27 @@ db.User.hasMany(db.ClickTransaction, {
 db.ClickTransaction.belongsTo(db.User, {
   foreignKey: "userId",
   onDelete: "CASCADE",
+});
+
+// 5. Notifications (One-to-Many + Join Table)
+db.Notification.hasMany(db.UserNotification, {
+  foreignKey: "notificationId",
+  as: "userNotifications",
+  onDelete: "CASCADE",
+});
+db.UserNotification.belongsTo(db.Notification, {
+  foreignKey: "notificationId",
+  as: "notification",
+});
+
+db.User.hasMany(db.UserNotification, {
+  foreignKey: "userId",
+  as: "notifications",
+  onDelete: "CASCADE",
+});
+db.UserNotification.belongsTo(db.User, {
+  foreignKey: "userId",
+  as: "user",
 });
 
 module.exports = db;

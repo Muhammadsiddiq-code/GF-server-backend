@@ -302,6 +302,8 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const TelegramBot = require("node-telegram-bot-api");
 const path = require("path");
+const http = require("http");
+const { Server } = require("socket.io");
 const rateLimit = require("express-rate-limit");
 
 dotenv.config();
@@ -355,6 +357,23 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
+
+// ---------------- SOCKET.IO SERVER ----------------
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: corsOptions,
+});
+
+app.set("io", io);
+
+io.on("connection", (socket) => {
+  // Foydalanuvchi ulandi
+  console.log("Socket connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("Socket disconnected:", socket.id);
+  });
+});
 
 // ✅ Static
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -434,6 +453,7 @@ const authRoutes = require("./routes/auth.routes");
 const paymeRoutes = require("./routes/payme.routes");
 const statsRoutes = require("./routes/stats.routes");
 const referralRoutes = require("./routes/referral.routes");
+const notificationRoutes = require("./routes/notification.routes");
 const setupSwagger = require("./swagger/swagger");
 
 // ✅ Umumiy rate limiter
@@ -447,6 +467,7 @@ app.use("/api/payment", paymentLimiter, paymentRoutes); // ✅ Qattiq rate limit
 app.use("/api/auth", authRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/referral", referralRoutes);
+app.use("/api", notificationRoutes);
 
 // Payme JSON-RPC callback (rate limit qo'ymaymiz — Payme serveridan keladi)
 app.use("/api/payme", paymeRoutes);
@@ -505,15 +526,15 @@ sequelize
       // Continue server startup even if seeder fails
     }
 
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`🚀 Server running: ${PORT}`);
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 Server running with Socket.IO: ${PORT}`);
     });
   })
   .catch((err) => {
     console.error("❌ DB Error:", err);
     console.error("❌ Server couldn't start due to database error");
     // Server DB error bilan ham ishlashda davom etishi kerak (Railway uchun)
-    app.listen(PORT, "0.0.0.0", () => {
+    server.listen(PORT, "0.0.0.0", () => {
       console.log(`⚠️ Server running on PORT ${PORT} (without DB)`);
     });
   });
