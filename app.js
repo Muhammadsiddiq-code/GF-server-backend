@@ -517,7 +517,11 @@ app.use((err, req, res, next) => {
     return res.status(400).json({ message: err.message });
   }
 
-  return res.status(500).json({ message: err.message || "Server xatosi" });
+  const status = Number(err.status || err.statusCode) || 500;
+  const message =
+    err.message || (status >= 500 ? "Server xatosi" : "So'rov xatosi");
+
+  return res.status(status).json({ message });
 });
 
 // -------------------- START SERVER --------------------

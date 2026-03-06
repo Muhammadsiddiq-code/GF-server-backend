@@ -69,6 +69,19 @@ const {
 
 const router = express.Router();
 
+router.use((req, res, next) => {
+  const telegramIdHeader = req.header("X-Telegram-Id") || req.header("x-telegram-id");
+  const telegramId = String(telegramIdHeader || "").trim();
+
+  if (!telegramId) {
+    return next(createError(400, "X-Telegram-Id header is required"));
+  }
+
+  req.telegramId = telegramId;
+  return next();
+});
+
+
 // Helper to resolve user from X-Telegram-Id
 async function getUserFromRequest(req) {
   if (!req.telegramId) {
