@@ -34,10 +34,14 @@ module.exports = (sequelize, DataTypes) => {
           name: "idx_user_notifications_notification",
           fields: ["notificationId"],
         },
+        {
+          name: "uq_user_notifications_user_notification",
+          unique: true,
+          fields: ["userId", "notificationId"],
+        },
       ],
     }
   );
 
   return UserNotification;
 };
-

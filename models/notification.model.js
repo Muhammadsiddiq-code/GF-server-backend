@@ -11,8 +11,8 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         validate: {
           len: {
-            args: [3],
-            msg: "Notification message must be at least 3 characters long",
+            args: [3, 5000],
+            msg: "Notification message must be between 3 and 5000 characters",
           },
         },
       },
@@ -43,4 +43,3 @@ module.exports = (sequelize, DataTypes) => {
 
   return Notification;
 };
-

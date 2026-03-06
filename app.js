@@ -254,8 +254,7 @@
 // setupSwagger(app);
 
 // // -------------------- START --------------------
-// const { sequelize } = require("./models");
-// const authController = require("./controllers/auth.controller");
+// // const authController = require("./controllers/auth.controller");
 
 // const PORT = process.env.PORT || 8080;
 
@@ -305,6 +304,8 @@ const path = require("path");
 const http = require("http");
 const { Server } = require("socket.io");
 const rateLimit = require("express-rate-limit");
+const { sequelize, User } = require("./models");
+const { NOTIFICATION_SOCKET_ROOMS } = require("./utils/notification-events");
 
 dotenv.config();
 
@@ -366,9 +367,30 @@ const io = new Server(server, {
 
 app.set("io", io);
 
-io.on("connection", (socket) => {
-  // Foydalanuvchi ulandi
+io.on("connection", async (socket) => {
   console.log("Socket connected:", socket.id);
+
+  const telegramId =
+    socket.handshake?.auth?.telegramId ||
+    socket.handshake?.query?.telegramId ||
+    socket.handshake?.headers?.["x-telegram-id"];
+
+  if (telegramId) {
+    try {
+      const user = await User.findOne({
+        where: { telegramId: String(telegramId) },
+        attributes: ["id"],
+        raw: true,
+      });
+
+      if (user) {
+        socket.data.userId = user.id;
+        socket.join(NOTIFICATION_SOCKET_ROOMS.AUTHENTICATED_USERS);
+      }
+    } catch (socketAuthError) {
+      console.error("Socket user lookup error:", socketAuthError.message);
+    }
+  }
 
   socket.on("disconnect", () => {
     console.log("Socket disconnected:", socket.id);
@@ -495,7 +517,6 @@ app.use((err, req, res, next) => {
 });
 
 // -------------------- START SERVER --------------------
-const { sequelize } = require("./models");
 const authController = require("./controllers/auth.controller");
 const referralController = require("./controllers/referral.controller");
 
@@ -538,3 +559,5 @@ sequelize
       console.log(`⚠️ Server running on PORT ${PORT} (without DB)`);
     });
   });
+
+

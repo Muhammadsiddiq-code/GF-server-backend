@@ -1,150 +1,180 @@
 const { Op } = require("sequelize");
 const { Notification, UserNotification, User, sequelize } = require("../models");
+const {
+  broadcastNotificationSchema,
+  notificationsQuerySchema,
+} = require("../validators/notification.validator");
+const { emitBroadcastNotification } = require("../utils/notification-events");
 
-const NOTIFICATION_TYPES = ["info", "success", "warning", "error"];
+const USER_BATCH_SIZE = 2000;
+
+const formatValidationErrors = (validationError) =>
+  (validationError?.details || []).map((detail) => detail.message);
+
+const mapNotificationRow = (row) => ({
+  id: row.id,
+  notificationId: row.notificationId,
+  title: row.notification?.title || null,
+  message: row.notification?.message || "",
+  type: row.notification?.type || "info",
+  isRead: row.isRead,
+  readAt: row.readAt,
+  createdAt: row.notification?.createdAt || row.createdAt,
+  userNotificationCreatedAt: row.createdAt,
+});
 
 // ADMIN: Broadcast notification to all users
 exports.broadcastNotification = async (req, res) => {
-  const { title, message, type = "info" } = req.body || {};
+  const { value, error } = broadcastNotificationSchema.validate(req.body || {}, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+
+  if (error) {
+    return res.status(400).json({
+      message: "Invalid notification payload",
+      errors: formatValidationErrors(error),
+    });
+  }
+
+  const { title = null, message, type } = value;
+  const createdBy = req.admin?.id || null;
+
+  let notification;
+  let recipientsCount = 0;
 
   try {
-    if (!message || typeof message !== "string" || message.trim().length < 3) {
-      return res
-        .status(400)
-        .json({ message: "Xabar matni kamida 3 ta belgidan iborat bo'lishi kerak" });
-    }
-
-    const normalizedType = NOTIFICATION_TYPES.includes(type) ? type : "info";
-    const adminId = req.admin ? req.admin.id : null;
-
-    let notification;
-    let userIds = [];
-
-    await sequelize.transaction(async (t) => {
+    await sequelize.transaction(async (transaction) => {
       notification = await Notification.create(
         {
-          title: title || null,
-          message: message.trim(),
-          type: normalizedType,
-          createdBy: adminId,
+          title,
+          message,
+          type,
+          createdBy,
         },
-        { transaction: t }
+        { transaction }
       );
 
-      const users = await User.findAll({
-        attributes: ["id"],
-        transaction: t,
-      });
+      let lastUserId = 0;
 
-      userIds = users.map((u) => u.id);
-
-      if (userIds.length === 0) {
-        return;
-      }
-
-      const rows = userIds.map((userId) => ({
-        userId,
-        notificationId: notification.id,
-        isRead: false,
-      }));
-
-      // Efficient bulk insert with batching for large user counts
-      const BATCH_SIZE = 1000;
-      for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-        const slice = rows.slice(i, i + BATCH_SIZE);
-        // validate: false for slightly faster inserts (we trust schema)
-        // ignoreDuplicates: false because each broadcast is unique
-        // transaction: t to keep in the same atomic operation
+      while (true) {
+        // Paginate through users by id to avoid loading the full user table into memory.
         // eslint-disable-next-line no-await-in-loop
-        await UserNotification.bulkCreate(slice, {
-          transaction: t,
+        const usersBatch = await User.findAll({
+          attributes: ["id"],
+          where: lastUserId ? { id: { [Op.gt]: lastUserId } } : undefined,
+          order: [["id", "ASC"]],
+          limit: USER_BATCH_SIZE,
+          raw: true,
+          transaction,
+        });
+
+        if (!usersBatch.length) {
+          break;
+        }
+
+        lastUserId = usersBatch[usersBatch.length - 1].id;
+        recipientsCount += usersBatch.length;
+
+        const userNotificationRows = usersBatch.map((user) => ({
+          userId: user.id,
+          notificationId: notification.id,
+          isRead: false,
+          readAt: null,
+        }));
+
+        // eslint-disable-next-line no-await-in-loop
+        await UserNotification.bulkCreate(userNotificationRows, {
+          transaction,
           validate: false,
+          ignoreDuplicates: true,
         });
       }
     });
 
-    const io = req.app.get("io");
-    if (io && notification && userIds.length > 0) {
-      io.emit("notification:broadcast", {
-        notification: {
-          id: notification.id,
-          title: notification.title,
-          message: notification.message,
-          type: notification.type,
-          createdAt: notification.createdAt,
-          isRead: false,
-        },
-      });
-    }
+    emitBroadcastNotification(req.app.get("io"), notification);
 
     return res.status(201).json({
       notification,
-      recipientsCount: userIds.length,
+      recipientsCount,
     });
-  } catch (error) {
-    console.error("Broadcast notification error:", error);
-    return res.status(500).json({ message: "Broadcast xatosi", error: error.message });
+  } catch (broadcastError) {
+    console.error("Broadcast notification error:", broadcastError);
+    return res.status(500).json({
+      message: "Broadcast xatosi",
+      error: broadcastError.message,
+    });
   }
 };
 
 // USER: Get current user's notifications (paginated)
 exports.getUserNotifications = async (req, res) => {
-  try {
-    const user = req.user;
-    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
-    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-    const offset = (page - 1) * limit;
+  const { value, error } = notificationsQuerySchema.validate(req.query || {}, {
+    abortEarly: false,
+    convert: true,
+    stripUnknown: true,
+  });
 
+  if (error) {
+    return res.status(400).json({
+      message: "Invalid query params",
+      errors: formatValidationErrors(error),
+    });
+  }
+
+  const { limit, page } = value;
+  const offset = (page - 1) * limit;
+
+  try {
     const { rows, count } = await UserNotification.findAndCountAll({
-      where: { userId: user.id },
+      where: { userId: req.user.id },
       include: [
         {
           model: Notification,
           as: "notification",
           required: true,
+          attributes: ["id", "title", "message", "type", "createdAt"],
         },
       ],
-      order: [["createdAt", "DESC"]],
+      order: [
+        [{ model: Notification, as: "notification" }, "createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
       limit,
       offset,
     });
 
-    const data = rows.map((row) => ({
-      id: row.id,
-      notificationId: row.notificationId,
-      title: row.notification.title,
-      message: row.notification.message,
-      type: row.notification.type,
-      isRead: row.isRead,
-      readAt: row.readAt,
-      createdAt: row.createdAt,
-    }));
+    const totalPages = Math.max(1, Math.ceil(count / limit));
 
     return res.json({
-      data,
+      data: rows.map(mapNotificationRow),
       page,
       limit,
       total: count,
+      totalPages,
+      hasMore: page < totalPages,
     });
-  } catch (error) {
-    console.error("Get notifications error:", error);
-    return res.status(500).json({ message: "Xabarnomalarni olishda xatolik", error: error.message });
+  } catch (getError) {
+    console.error("Get notifications error:", getError);
+    return res.status(500).json({
+      message: "Xabarnomalarni olishda xatolik",
+      error: getError.message,
+    });
   }
 };
 
 // USER: Mark single notification as read
 exports.markNotificationRead = async (req, res) => {
+  const notificationId = Number(req.params.notificationId);
+
+  if (!Number.isInteger(notificationId) || notificationId <= 0) {
+    return res.status(400).json({ message: "notificationId noto'g'ri" });
+  }
+
   try {
-    const user = req.user;
-    const { notificationId } = req.params;
-
-    if (!notificationId) {
-      return res.status(400).json({ message: "notificationId talab qilinadi" });
-    }
-
     const userNotification = await UserNotification.findOne({
       where: {
-        userId: user.id,
+        userId: req.user.id,
         notificationId,
       },
     });
@@ -159,6 +189,13 @@ exports.markNotificationRead = async (req, res) => {
       await userNotification.save();
     }
 
+    const unreadCount = await UserNotification.count({
+      where: {
+        userId: req.user.id,
+        isRead: false,
+      },
+    });
+
     return res.json({
       message: "Xabarnoma o'qilgan deb belgilandi",
       notification: {
@@ -167,23 +204,27 @@ exports.markNotificationRead = async (req, res) => {
         isRead: userNotification.isRead,
         readAt: userNotification.readAt,
       },
+      unreadCount,
     });
-  } catch (error) {
-    console.error("Mark notification read error:", error);
-    return res.status(500).json({ message: "Xatolik yuz berdi", error: error.message });
+  } catch (markError) {
+    console.error("Mark notification read error:", markError);
+    return res.status(500).json({
+      message: "Xatolik yuz berdi",
+      error: markError.message,
+    });
   }
 };
 
 // USER: Mark all notifications as read
 exports.markAllNotificationsRead = async (req, res) => {
-  try {
-    const user = req.user;
+  const readAt = new Date();
 
+  try {
     const [updatedCount] = await UserNotification.update(
-      { isRead: true, readAt: new Date() },
+      { isRead: true, readAt },
       {
         where: {
-          userId: user.id,
+          userId: req.user.id,
           isRead: false,
         },
       }
@@ -192,29 +233,33 @@ exports.markAllNotificationsRead = async (req, res) => {
     return res.json({
       message: "Barcha xabarnomalar o'qilgan deb belgilandi",
       updated: updatedCount,
+      readAt,
     });
-  } catch (error) {
-    console.error("Mark all notifications read error:", error);
-    return res.status(500).json({ message: "Xatolik yuz berdi", error: error.message });
+  } catch (markAllError) {
+    console.error("Mark all notifications read error:", markAllError);
+    return res.status(500).json({
+      message: "Xatolik yuz berdi",
+      error: markAllError.message,
+    });
   }
 };
 
 // USER: Get unread notifications count
 exports.getUnreadCount = async (req, res) => {
   try {
-    const user = req.user;
-
     const count = await UserNotification.count({
       where: {
-        userId: user.id,
+        userId: req.user.id,
         isRead: false,
       },
     });
 
     return res.json({ count });
-  } catch (error) {
-    console.error("Get unread count error:", error);
-    return res.status(500).json({ message: "Xatolik yuz berdi", error: error.message });
+  } catch (countError) {
+    console.error("Get unread count error:", countError);
+    return res.status(500).json({
+      message: "Xatolik yuz berdi",
+      error: countError.message,
+    });
   }
 };
-

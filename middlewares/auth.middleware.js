@@ -42,6 +42,17 @@ exports.authenticateAdmin = async (req, res, next) => {
 };
 
 /**
+ * Role middleware for already authenticated admins.
+ */
+exports.isAdmin = (req, res, next) => {
+  if (!req.admin || !req.admin.id) {
+    return res.status(403).json({ message: "Admin huquqi talab qilinadi" });
+  }
+
+  return next();
+};
+
+/**
  * User auth middleware (Telegram-based)
  * - Expects X-Telegram-Id header with telegramId string
  * - Matches existing login/session flow which stores telegramId on backend
@@ -71,4 +82,3 @@ exports.authenticateUser = async (req, res, next) => {
     res.status(500).json({ message: "Auth xatosi", error: error.message });
   }
 };
-
