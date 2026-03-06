@@ -521,12 +521,17 @@ const authController = require("./controllers/auth.controller");
 const referralController = require("./controllers/referral.controller");
 
 const PORT = process.env.PORT || 5577;
+const isProduction = process.env.NODE_ENV === "production";
+const syncOptions = isProduction ? {} : { alter: true };
 
-// ✅ Error handling for database connection
 sequelize
-  .sync({ alter: true })
+  .sync(syncOptions)
   .then(async () => {
-    console.log("✅ DB connected & synced");
+    console.log(
+      isProduction
+        ? "DB connected (production sync: no alter)"
+        : "DB connected & synced (development alter mode)"
+    );
 
     if (authController.initDefaultAdmin) {
       await authController.initDefaultAdmin();
@@ -537,27 +542,25 @@ sequelize
       await referralController.initDefaultSettings();
     }
 
-    // ========== YANGI: XP CONVERSION SECURITY SETTINGS ==========
+    // ========== XP CONVERSION SECURITY SETTINGS ==========
     try {
       const initXpSecuritySettings = require("./config/xp-security-seeder");
       const { Setting } = require("./models");
       await initXpSecuritySettings(Setting);
     } catch (error) {
-      console.error("⚠️ Warning: Could not initialize XP security settings:", error.message);
+      console.error("Warning: Could not initialize XP security settings:", error.message);
       // Continue server startup even if seeder fails
     }
 
     server.listen(PORT, "0.0.0.0", () => {
-      console.log(`🚀 Server running with Socket.IO: ${PORT}`);
+      console.log(`Server running with Socket.IO: ${PORT}`);
     });
   })
   .catch((err) => {
-    console.error("❌ DB Error:", err);
-    console.error("❌ Server couldn't start due to database error");
-    // Server DB error bilan ham ishlashda davom etishi kerak (Railway uchun)
-    server.listen(PORT, "0.0.0.0", () => {
-      console.log(`⚠️ Server running on PORT ${PORT} (without DB)`);
-    });
+    console.error("DB Error:", err);
+    console.error("Server stopped because database connection failed.");
+    process.exit(1);
   });
+
 
 

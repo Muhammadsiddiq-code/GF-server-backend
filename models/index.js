@@ -65,8 +65,11 @@ require("dotenv").config();
 
 let sequelize;
 
-if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
-  // ✅ Production: PostgreSQL (Railway/Render)
+const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+const isProduction = process.env.NODE_ENV === "production";
+
+if (hasDatabaseUrl) {
+  // Use PostgreSQL whenever DATABASE_URL is present to avoid accidental SQLite fallback on servers.
   sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: "postgres",
     logging: false,
@@ -83,16 +86,19 @@ if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
       idle: 10000,
     },
   });
-  console.log("🔗 Database: PostgreSQL (production)");
+  console.log("Database: PostgreSQL (DATABASE_URL)");
+} else if (isProduction) {
+  throw new Error("DATABASE_URL is required in production. Refusing to start with SQLite fallback.");
 } else {
-  // ✅ Local development: SQLite (hech narsa o'rnatish kerak emas!)
+  // Local development fallback
   sequelize = new Sequelize({
     dialect: "sqlite",
     storage: path.join(__dirname, "..", "database.sqlite"),
     logging: false,
   });
-  console.log("🔗 Database: SQLite (local development)");
+  console.log("Database: SQLite (local development)");
 }
+
 
 const db = {};
 
@@ -206,3 +212,6 @@ db.UserNotification.belongsTo(db.User, {
 });
 
 module.exports = db;
+
+
+
