@@ -2,12 +2,21 @@ const { Pool } = require("pg");
 
 const createPool = () => {
   if (process.env.DATABASE_URL) {
+    const pgssl = process.env.PGSSL;
+    const rejectUnauthorizedEnv = process.env.PGSSL_REJECT_UNAUTHORIZED;
+
+    // Match Sequelize config in this project: keep SSL enabled by default,
+    // but do not reject managed/self-signed chains unless explicitly requested.
+    const ssl =
+      pgssl === "false"
+        ? false
+        : {
+            rejectUnauthorized: rejectUnauthorizedEnv === "true",
+          };
+
     return new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl:
-        process.env.PGSSL === "false"
-          ? false
-          : { rejectUnauthorized: process.env.PGSSL_REJECT_UNAUTHORIZED === "false" ? false : true },
+      ssl,
     });
   }
 
@@ -89,4 +98,3 @@ module.exports = {
   withTransaction,
   initDb,
 };
-
