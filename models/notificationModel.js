@@ -1,121 +1,108 @@
-const { query } = require("../src/db.js");
+const db = require("./index.js");
 
 async function createNotification({ title, message, type, isGlobal, createdByAdminId }) {
-  const { rows } = await query(
-    `
-    INSERT INTO notifications (title, message, type, is_global, created_by_admin_id)
-    VALUES ($1, $2, $3, $4, $5)
-    RETURNING *
-    `,
-    [title, message, type, isGlobal, createdByAdminId || null]
-  );
-  return rows[0];
+  const notification = await db.Notification.create({
+    title,
+    message,
+    type,
+    createdBy: createdByAdminId || null
+  });
+
+  const data = notification.toJSON();
+  data.created_at = data.createdAt;
+  // We attach isGlobal here even if it's not saved to the DB by Sequelize
+  // to return a consistent object for routes.
+  data.is_global = isGlobal;
+  return data;
 }
 
 async function createUserNotification({ userId, notificationId }) {
-  const { rows } = await query(
-    `
-    INSERT INTO user_notifications (user_id, notification_id)
-    VALUES ($1, $2)
-    RETURNING *
-    `,
-    [userId, notificationId]
-  );
-  return rows[0];
+  const userNotification = await db.UserNotification.create({
+    userId,
+    notificationId
+  });
+  return userNotification.toJSON();
 }
 
 async function createUserNotificationsForAllUsers(notificationId) {
-  const { rows } = await query(
-    `
-    INSERT INTO user_notifications (user_id, notification_id)
-    SELECT id, $1
-    FROM users
-    RETURNING *
-    `,
-    [notificationId]
-  );
-  return rows;
+  const users = await db.User.findAll({ attributes: ['id'] });
+  const records = users.map(u => ({
+    userId: u.id,
+    notificationId
+  }));
+  const userNotifications = await db.UserNotification.bulkCreate(records);
+  return userNotifications.map(un => un.toJSON());
 }
 
 async function getUserNotificationsPaginated({ userId, page = 1, limit = 20 }) {
   const offset = (page - 1) * limit;
 
-  const { rows } = await query(
-    `
-    SELECT
-      un.id,
-      un.notification_id,
-      n.title,
-      n.message,
-      n.type,
-      un.is_read,
-      un.read_at,
-      n.created_at
-    FROM user_notifications un
-    JOIN notifications n ON n.id = un.notification_id
-    WHERE un.user_id = $1
-    ORDER BY n.created_at DESC
-    LIMIT $2 OFFSET $3
-    `,
-    [userId, limit, offset]
-  );
+  const { count, rows } = await db.UserNotification.findAndCountAll({
+    where: { userId },
+    include: [{
+      model: db.Notification,
+      as: 'notification',
+      attributes: ['title', 'message', 'type', 'createdAt']
+    }],
+    order: [['createdAt', 'DESC']],
+    limit,
+    offset
+  });
 
-  const countRes = await query(
-    `
-    SELECT COUNT(*)::int AS count
-    FROM user_notifications
-    WHERE user_id = $1
-    `,
-    [userId]
-  );
-  const total = countRes.rows[0]?.count || 0;
+  const data = rows.map(row => ({
+    id: row.id,
+    notification_id: row.notificationId,
+    title: row.notification.title,
+    message: row.notification.message,
+    type: row.notification.type,
+    is_read: row.isRead,
+    read_at: row.readAt,
+    created_at: row.notification.createdAt
+  }));
 
   return {
-    data: rows,
-    total,
+    data,
+    total: count,
     page,
-    totalPages: Math.max(1, Math.ceil(total / limit)),
+    totalPages: Math.max(1, Math.ceil(count / limit)),
   };
 }
 
 async function getUnreadCountForUser(userId) {
-  const { rows } = await query(
-    `
-    SELECT COUNT(*)::int AS count
-    FROM user_notifications
-    WHERE user_id = $1 AND is_read = false
-    `,
-    [userId]
-  );
-  return rows[0]?.count || 0;
+  const count = await db.UserNotification.count({
+    where: { userId, isRead: false }
+  });
+  return count;
 }
 
 async function markNotificationReadForUser({ userId, notificationId }) {
-  const { rows } = await query(
-    `
-    UPDATE user_notifications
-    SET is_read = true,
-        read_at = COALESCE(read_at, now())
-    WHERE user_id = $1 AND notification_id = $2
-    RETURNING *
-    `,
-    [userId, notificationId]
-  );
-  return rows[0] || null;
+  const userNotification = await db.UserNotification.findOne({
+    where: { userId, notificationId }
+  });
+
+  if (!userNotification) return null;
+
+  userNotification.isRead = true;
+  userNotification.readAt = userNotification.readAt || new Date();
+  await userNotification.save();
+
+  const data = userNotification.toJSON();
+  data.notification_id = data.notificationId;
+  data.is_read = data.isRead;
+  data.read_at = data.readAt;
+  return data;
 }
 
 async function markAllNotificationsReadForUser(userId) {
-  const { rows } = await query(
-    `
-    UPDATE user_notifications
-    SET is_read = true,
-        read_at = COALESCE(read_at, now())
-    WHERE user_id = $1 AND is_read = false
-    RETURNING now() AS read_at
-    `,
-    [userId]
-  );
-  return rows[0] || null;
+  const now = new Date();
+  await db.UserNotification.update({
+    isRead: true,
+    readAt: now
+  }, {
+    where: { userId, isRead: false }
+  });
+
+  return { read_at: now };
 }
 
 module.exports = {
