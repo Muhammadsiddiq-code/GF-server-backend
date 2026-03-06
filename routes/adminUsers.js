@@ -1,6 +1,6 @@
 const express = require("express");
 const createError = require("http-errors");
-const { findAllUsers } = require("../models/userModel.js");
+const db = require("../models/index.js");
 
 const router = express.Router();
 
@@ -12,7 +12,7 @@ router.get("/", async (req, res, next) => {
     const offset = (page - 1) * limit;
     const search = req.query.search?.trim() || "";
 
-    const result = await findAllUsers({ search, limit, offset });
+    const result = await db.User.findAllUsers({ search, limit, offset });
     const totalPages = Math.max(1, Math.ceil(result.total / limit));
 
     res.json({

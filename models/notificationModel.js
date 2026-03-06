@@ -1,4 +1,4 @@
-const { query } = require("../db.js");
+const { query } = require("../src/db.js");
 
 async function createNotification({ title, message, type, isGlobal, createdByAdminId }) {
   const { rows } = await query(

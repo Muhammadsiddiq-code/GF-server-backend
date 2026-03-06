@@ -475,7 +475,7 @@ const authRoutes = require("./routes/auth.routes");
 const paymeRoutes = require("./routes/payme.routes");
 const statsRoutes = require("./routes/stats.routes");
 const referralRoutes = require("./routes/referral.routes");
-const notificationRoutes = require("./routes/notification.routes");
+const notificationRoutes = require("./routes/notifications.js");
 const setupSwagger = require("./swagger/swagger");
 
 // ✅ Umumiy rate limiter
@@ -522,7 +522,7 @@ const referralController = require("./controllers/referral.controller");
 
 const PORT = process.env.PORT || 5577;
 const isProduction = process.env.NODE_ENV === "production";
-const syncOptions = isProduction ? {} : { alter: true };
+const syncOptions = isProduction ? {} : {};
 
 sequelize
   .sync(syncOptions)

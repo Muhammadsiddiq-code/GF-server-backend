@@ -2,7 +2,7 @@ const express = require("express");
 const createError = require("http-errors");
 
 const { createNotification, createUserNotification, createUserNotificationsForAllUsers } = require("../models/notificationModel.js");
-const { findUserByTelegramId } = require("../models/userModel.js");
+const db = require("../models/index.js");
 
 const router = express.Router();
 
@@ -65,7 +65,7 @@ router.post("/personal", async (req, res, next) => {
 
     validateNotificationPayload({ message, type });
 
-    const user = await findUserByTelegramId(String(telegramId));
+    const user = await db.User.findUserByTelegramId(String(telegramId));
     if (!user) {
       throw createError(404, "Target user not found");
     }

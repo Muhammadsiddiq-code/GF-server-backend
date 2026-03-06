@@ -59,7 +59,7 @@
 
 const express = require("express");
 const createError = require("http-errors");
-const { findUserByTelegramId } = require("../models/userModel.js");
+const db = require("../models/index.js");
 const {
   getUserNotificationsPaginated,
   getUnreadCountForUser,
@@ -75,7 +75,7 @@ async function getUserFromRequest(req) {
     throw createError(400, "X-Telegram-Id header is required");
   }
 
-  const user = await findUserByTelegramId(req.telegramId);
+  const user = await db.User.findUserByTelegramId(req.telegramId);
   if (!user) {
     throw createError(404, "User not found");
   }
