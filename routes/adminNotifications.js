@@ -1,8 +1,8 @@
-import express from "express";
-import createError from "http-errors";
+const express = require("express");
+const createError = require("http-errors");
 
-import { createNotification, createUserNotification, createUserNotificationsForAllUsers } from "../models/notificationModel.js";
-import { findUserByTelegramId } from "../models/userModel.js";
+const { createNotification, createUserNotification, createUserNotificationsForAllUsers } = require("../models/notificationModel.js");
+const { findUserByTelegramId } = require("../models/userModel.js");
 
 const router = express.Router();
 
@@ -104,4 +104,4 @@ router.post("/personal", async (req, res, next) => {
   }
 });
 
-export default router;
+module.exports = router;

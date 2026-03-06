@@ -57,15 +57,15 @@
 
 
 
-import express from "express";
-import createError from "http-errors";
-import { findUserByTelegramId } from "../models/userModel.js";
-import {
+const express = require("express");
+const createError = require("http-errors");
+const { findUserByTelegramId } = require("../models/userModel.js");
+const {
   getUserNotificationsPaginated,
   getUnreadCountForUser,
   markNotificationReadForUser,
   markAllNotificationsReadForUser,
-} from "../models/notificationModel.js";
+} = require("../models/notificationModel.js");
 
 const router = express.Router();
 
@@ -182,4 +182,4 @@ router.patch("/read-all", async (req, res, next) => {
   }
 });
 
-export default router;
+module.exports = router;

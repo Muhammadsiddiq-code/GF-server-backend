@@ -1,6 +1,6 @@
-import express from "express";
-import createError from "http-errors";
-import { findAllUsers } from "../models/userModel.js";
+const express = require("express");
+const createError = require("http-errors");
+const { findAllUsers } = require("../models/userModel.js");
 
 const router = express.Router();
 
@@ -27,4 +27,4 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-export default router;
+module.exports = router;

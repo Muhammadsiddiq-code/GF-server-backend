@@ -77,9 +77,9 @@
 
 
 
-import { query } from "../db.js";
+const { query } = require("../db.js");
 
-export async function findUserByTelegramId(telegramId) {
+async function findUserByTelegramId(telegramId) {
   const { rows } = await query(
     "SELECT * FROM users WHERE telegram_id = $1",
     [telegramId]
@@ -87,7 +87,7 @@ export async function findUserByTelegramId(telegramId) {
   return rows[0] || null;
 }
 
-export async function findAllUsers({ search, limit = 50, offset = 0 }) {
+async function findAllUsers({ search, limit = 50, offset = 0 }) {
   const params = [];
   let where = "";
   if (search) {
@@ -125,3 +125,8 @@ export async function findAllUsers({ search, limit = 50, offset = 0 }) {
     total: countRes.rows[0]?.count || 0,
   };
 }
+
+module.exports = {
+  findUserByTelegramId,
+  findAllUsers
+};

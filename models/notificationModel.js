@@ -1,6 +1,6 @@
-import { query } from "../db.js";
+const { query } = require("../db.js");
 
-export async function createNotification({ title, message, type, isGlobal, createdByAdminId }) {
+async function createNotification({ title, message, type, isGlobal, createdByAdminId }) {
   const { rows } = await query(
     `
     INSERT INTO notifications (title, message, type, is_global, created_by_admin_id)
@@ -12,7 +12,7 @@ export async function createNotification({ title, message, type, isGlobal, creat
   return rows[0];
 }
 
-export async function createUserNotification({ userId, notificationId }) {
+async function createUserNotification({ userId, notificationId }) {
   const { rows } = await query(
     `
     INSERT INTO user_notifications (user_id, notification_id)
@@ -24,7 +24,7 @@ export async function createUserNotification({ userId, notificationId }) {
   return rows[0];
 }
 
-export async function createUserNotificationsForAllUsers(notificationId) {
+async function createUserNotificationsForAllUsers(notificationId) {
   const { rows } = await query(
     `
     INSERT INTO user_notifications (user_id, notification_id)
@@ -37,7 +37,7 @@ export async function createUserNotificationsForAllUsers(notificationId) {
   return rows;
 }
 
-export async function getUserNotificationsPaginated({ userId, page = 1, limit = 20 }) {
+async function getUserNotificationsPaginated({ userId, page = 1, limit = 20 }) {
   const offset = (page - 1) * limit;
 
   const { rows } = await query(
@@ -78,7 +78,7 @@ export async function getUserNotificationsPaginated({ userId, page = 1, limit = 
   };
 }
 
-export async function getUnreadCountForUser(userId) {
+async function getUnreadCountForUser(userId) {
   const { rows } = await query(
     `
     SELECT COUNT(*)::int AS count
@@ -90,7 +90,7 @@ export async function getUnreadCountForUser(userId) {
   return rows[0]?.count || 0;
 }
 
-export async function markNotificationReadForUser({ userId, notificationId }) {
+async function markNotificationReadForUser({ userId, notificationId }) {
   const { rows } = await query(
     `
     UPDATE user_notifications
@@ -104,7 +104,7 @@ export async function markNotificationReadForUser({ userId, notificationId }) {
   return rows[0] || null;
 }
 
-export async function markAllNotificationsReadForUser(userId) {
+async function markAllNotificationsReadForUser(userId) {
   const { rows } = await query(
     `
     UPDATE user_notifications
@@ -117,3 +117,13 @@ export async function markAllNotificationsReadForUser(userId) {
   );
   return rows[0] || null;
 }
+
+module.exports = {
+  createNotification,
+  createUserNotification,
+  createUserNotificationsForAllUsers,
+  getUserNotificationsPaginated,
+  getUnreadCountForUser,
+  markNotificationReadForUser,
+  markAllNotificationsReadForUser
+};
