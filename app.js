@@ -352,7 +352,9 @@ const corsOptions = {
     "Cache-Control",
     "Pragma",
     "baggage",
-    "sentry-trace"
+    "sentry-trace",
+    "x-telegram-id",
+    "X-Telegram-Id"
   ],
 };
 
