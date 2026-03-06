@@ -476,6 +476,7 @@ const paymeRoutes = require("./routes/payme.routes");
 const statsRoutes = require("./routes/stats.routes");
 const referralRoutes = require("./routes/referral.routes");
 const notificationRoutes = require("./routes/notifications.js");
+const adminNotificationRoutes = require("./routes/adminNotifications.js");
 const setupSwagger = require("./swagger/swagger");
 
 // ✅ Umumiy rate limiter
@@ -489,7 +490,8 @@ app.use("/api/payment", paymentLimiter, paymentRoutes); // ✅ Qattiq rate limit
 app.use("/api/auth", authRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/referral", referralRoutes);
-app.use("/api", notificationRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/admin/notifications", adminNotificationRoutes);
 
 // Payme JSON-RPC callback (rate limit qo'ymaymiz — Payme serveridan keladi)
 app.use("/api/payme", paymeRoutes);
