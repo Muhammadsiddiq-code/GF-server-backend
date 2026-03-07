@@ -262,10 +262,10 @@ const PerformTransaction = async (params, id) => {
     const account = paymeTx.account || {};
 
     // =====================================================
-    // GAME PAYMENT: Agar account.game_id mavjud bo'lsa
+    // GAME PAYMENT: Agar account.game_id mavjud bo'lsa  (0 = topup)
     // o'yinga to'g'ridan-to'g'ri to'lov qilamiz
     // =====================================================
-    if (account.game_id) {
+   if (account.game_id && String(account.game_id) !== "0"){
       const { Game, UserGame } = require("../models");
 
       const gameId = Number(account.game_id);
