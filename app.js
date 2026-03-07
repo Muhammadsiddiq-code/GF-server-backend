@@ -387,12 +387,23 @@ io.on("connection", async (socket) => {
 
       if (user) {
         socket.data.userId = user.id;
+        socket.data.telegramId = telegramId;
         socket.join(NOTIFICATION_SOCKET_ROOMS.AUTHENTICATED_USERS);
+        // Join user-specific room for personal notifications
+        socket.join(`user:${telegramId}`);
       }
     } catch (socketAuthError) {
       console.error("Socket user lookup error:", socketAuthError.message);
     }
   }
+
+  // Handle explicit room join request from client
+  socket.on("join-user-room", (data) => {
+    if (data?.telegramId) {
+      socket.join(`user:${data.telegramId}`);
+      console.log(`Socket ${socket.id} joined room: user:${data.telegramId}`);
+    }
+  });
 
   socket.on("disconnect", () => {
     console.log("Socket disconnected:", socket.id);
