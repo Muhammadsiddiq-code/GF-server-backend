@@ -830,7 +830,7 @@ const getPaymeCheckoutUrl = async (req, res) => {
     // account.telegram_id bo'yicha User topish.
     const params = `m=${PAYME_MERCHANT_ID};ac.telegram_id=${encodeURIComponent(
       String(telegramId)
-    )};a=${amountTiyin}`;
+    )};ac.game_id=0;ac.team=NA;a=${amountTiyin}`;
 
     const b64 = Buffer.from(params).toString("base64");
     const checkoutUrl = `${PAYME_CHECKOUT_BASE}/${b64}`;
@@ -839,7 +839,7 @@ const getPaymeCheckoutUrl = async (req, res) => {
       checkoutUrl,
       amountSom,
       amountTiyin,
-      account: { telegram_id: String(telegramId) },
+      account: { telegram_id: String(telegramId), game_id: "0", team: "NA" },
     });
   } catch (error) {
     console.error("Payme checkout-url error:", error);
