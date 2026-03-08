@@ -287,7 +287,7 @@ exports.getDashboardStats = async (req, res) => {
                 [db.sequelize.fn("COUNT", db.sequelize.col("userId")), "gamesCount"],
             ],
             group: ["userId"],
-            order: [[db.sequelize.literal("gamesCount"), "DESC"]],
+            order: [[db.sequelize.fn("COUNT", db.sequelize.col("userId")), "DESC"]],
             limit: 5,
             raw: true,
         });
