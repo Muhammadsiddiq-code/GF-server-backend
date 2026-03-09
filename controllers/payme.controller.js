@@ -90,15 +90,6 @@ const checkAuth = (req) => {
   const password = decoded.substring(colonIndex + 1);
   if (!login || password === undefined) return false;
 
-  console.log("AUTH DEBUG:", {
-    login,
-    receivedKeyLength: password.length,
-    expectedKeyLength: (PAYME_SECRET_KEY || "").length,
-    match: password === PAYME_SECRET_KEY,
-    receivedLast5: password.slice(-5),
-    expectedLast5: (PAYME_SECRET_KEY || "").slice(-5),
-  });
-
   return login === "Paycom" && password === PAYME_SECRET_KEY;
 };
 
