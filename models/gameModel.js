@@ -186,9 +186,8 @@ module.exports = (sequelize, DataTypes) => {
     mvpPlayer: {
       type: DataTypes.STRING,
     },
-    // MUHIM: JSONB turi
     rules: {
-      type: DataTypes.JSONB,
+      type: DataTypes.JSON,
       defaultValue: [],
     },
   });

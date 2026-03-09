@@ -103,6 +103,7 @@ const checkAuth = (req) => {
 // 1) CheckPerformTransaction
 const CheckPerformTransaction = async (params, id) => {
   try {
+    console.log("CheckPerformTransaction params:", params);
     const { account, amount } = params || {};
     const tgId = account?.telegram_id;
 
@@ -381,13 +382,44 @@ const CancelTransaction = async (params, id) => {
 
     const cancelTime = Date.now();
 
-    // Agar to'lov bajarilgan bo'lsa (state=2) -> rollback balans
+    // Agar to'lov bajarilgan bo'lsa (state=2) -> rollback
     if (paymeTx.state === 2) {
+      const { Game, UserGame } = require("../models");
       const user = await User.findByPk(paymeTx.userId, { transaction: t });
-      if (user) {
-        const amountSom = Number(paymeTx.amount || 0) / 100;
-        // balans yetarliligini tekshiramiz
-        if (Number(user.balance || 0) >= amountSom) {
+      const amountSom = Number(paymeTx.amount || 0) / 100;
+      const account = paymeTx.account || {};
+      const gameId = account.game_id;
+
+      if (gameId && gameId !== "0") {
+        // O'yin to'lovi bekor qilish — UserGame va playersJoined qaytarish
+        const userGameEntry = await UserGame.findOne({
+          where: { userId: paymeTx.userId, gameId },
+          transaction: t,
+        });
+        if (userGameEntry) {
+          await userGameEntry.destroy({ transaction: t });
+        }
+
+        const game = await Game.findByPk(gameId, { transaction: t });
+        if (game && game.playersJoined > 0) {
+          await game.update(
+            { playersJoined: game.playersJoined - 1 },
+            { transaction: t }
+          );
+        }
+
+        // Expense transactionni ham declined qilish
+        await Transaction.update(
+          { status: "declined" },
+          {
+            where: { userId: paymeTx.userId, paymentType: "payme", type: "expense", status: "approved" },
+            transaction: t,
+            limit: 1,
+          }
+        );
+      } else {
+        // Hamyon to'ldirish bekor qilish — balansni kamaytirish
+        if (user && Number(user.balance || 0) >= amountSom) {
           await user.update(
             { balance: Number(user.balance || 0) - amountSom },
             { transaction: t }
@@ -516,6 +548,7 @@ const GetStatement = async (params, id) => {
 // MAIN ENDPOINT
 // ============================================================
 const handlePayme = async (req, res) => {
+  console.log("Received Payme request:", JSON.stringify(req.body));
   if (!checkAuth(req)) {
     return res.json(errorResponse(req.body?.id, PaymeError.InvalidAuthorization));
   }
