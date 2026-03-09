@@ -127,6 +127,11 @@ const CheckPerformTransaction = async (params, id) => {
     const order = await PaymeOrder.findOne({ where: { orderId: String(orderId) } });
     if (!order) return errorResponse(id, PaymeError.UserNotFound);
 
+    // Account fieldlarini order bilan solishtirish
+    if (order.telegramId !== String(tgId)) return errorResponse(id, PaymeError.UserNotFound);
+    if (order.gameId !== String(account?.game_id || "0")) return errorResponse(id, PaymeError.UserNotFound);
+    if (order.team !== String(account?.team || "NA")) return errorResponse(id, PaymeError.UserNotFound);
+
     // Summa tekshiruvi
     const amountTiyin = Number(amount);
     if (!Number.isFinite(amountTiyin) || amountTiyin < 100 || amountTiyin > 100_000_000) {
@@ -174,6 +179,12 @@ const CreateTransaction = async (params, id) => {
     }
     const order = await PaymeOrder.findOne({ where: { orderId: String(orderId) }, transaction: t });
     if (!order) {
+      await t.rollback();
+      return errorResponse(id, PaymeError.UserNotFound);
+    }
+
+    // Account fieldlarini order bilan solishtirish
+    if (order.telegramId !== String(tgId) || order.gameId !== String(account?.game_id || "0") || order.team !== String(account?.team || "NA")) {
       await t.rollback();
       return errorResponse(id, PaymeError.UserNotFound);
     }
