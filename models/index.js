@@ -119,6 +119,7 @@ db.Admin = require("./admin.model.js")(sequelize, Sequelize);
 db.Referral = require("./referral.model")(sequelize, DataTypes);
 db.Setting = require("./setting.model")(sequelize, DataTypes);
 db.ClickTransaction = require("./clickTransaction.model")(sequelize, DataTypes);
+db.PaymeOrder = require("./paymeOrder.model")(sequelize, DataTypes);
 
 // Notifications
 db.Notification = require("./notification.model")(sequelize, DataTypes);
