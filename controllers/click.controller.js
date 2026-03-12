@@ -10,6 +10,7 @@ const {
     sequelize,
 } = require("../models");
 require("dotenv").config();
+const { notifyPayment } = require("../utils/paymentNotifier");
 
 // --- ENV dan CLICK sozlamalari ---
 const CLICK_SERVICE_ID = () => process.env.CLICK_SERVICE_ID;
@@ -448,6 +449,37 @@ const handleComplete = async (req, res) => {
         );
 
         await t.commit();
+
+        // --- To'lov xabarnomasi Telegram botga ---
+        try {
+          const isGamePayment = account.type === "game" && account.game_id;
+          let gameData = null;
+          if (isGamePayment) {
+            const g = await Game.findByPk(account.game_id);
+            if (g) {
+              gameData = {
+                title: g.title,
+                location: g.location,
+                playDate: g.playDate,
+                startTime: g.startTime,
+                endTime: g.endTime,
+              };
+            }
+          }
+          notifyPayment({
+            user: {
+              firstName: user.firstName,
+              lastName: user.lastName,
+              username: user.username,
+              telegramId: account.telegram_id || "",
+            },
+            game: gameData,
+            amount: amountSom,
+            method: "click",
+            team: account.team || "Noma'lum",
+            type: isGamePayment ? "game" : "topup",
+          }).catch(() => {});
+        } catch (_) {}
 
         const response = {
             click_trans_id: Number(click_trans_id),

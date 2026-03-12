@@ -1,6 +1,7 @@
 // controllers/payme.controller.js
 const { User, Transaction, PaymeTransaction, sequelize } = require("../models");
 require("dotenv").config();
+const { notifyPayment } = require("../utils/paymentNotifier");
 
 const PAYME_SECRET_KEY = process.env.PAYME_SECRET_KEY; // Paycom "Paycom:<KEY>" Basic Auth password
 
@@ -251,7 +252,6 @@ const PerformTransaction = async (params, id) => {
 
     const performTime = Date.now();
 
-    // user olish
     const user = await User.findByPk(paymeTx.userId, { transaction: t });
     if (!user) {
       await t.rollback();
@@ -348,6 +348,38 @@ const PerformTransaction = async (params, id) => {
     );
 
     await t.commit();
+
+    // --- To'lov xabarnomasi Telegram botga ---
+    try {
+      const isGamePayment = account.game_id && String(account.game_id) !== "0";
+      let gameData = null;
+      if (isGamePayment) {
+        const { Game } = require("../models");
+        const g = await Game.findByPk(Number(account.game_id));
+        if (g) {
+          gameData = {
+            title: g.title,
+            location: g.location,
+            playDate: g.playDate,
+            startTime: g.startTime,
+            endTime: g.endTime,
+          };
+        }
+      }
+      notifyPayment({
+        user: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          username: user.username,
+          telegramId: account.telegram_id || "",
+        },
+        game: gameData,
+        amount: amountSom,
+        method: "payme",
+        team: account.team || "Noma'lum",
+        type: isGamePayment ? "game" : "topup",
+      }).catch(() => {});
+    } catch (_) {}
 
     return successResponse(id, {
       perform_time: performTime,

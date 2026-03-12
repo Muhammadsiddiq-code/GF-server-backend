@@ -580,6 +580,3 @@ sequelize
     console.error("Server stopped because database connection failed.");
     process.exit(1);
   });
-
-
-

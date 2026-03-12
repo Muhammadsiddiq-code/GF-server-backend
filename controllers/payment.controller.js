@@ -527,6 +527,7 @@
 const { User, Game, Transaction, UserGame, sequelize } = require("../models");
 const { v4: uuidv4 } = require("uuid");
 const crypto = require("crypto");
+const { notifyPayment } = require("../utils/paymentNotifier");
 
 // --- XAVFSIZLIK: Ruxsat etilgan maximum to'lov (UZS) ---
 const MAX_PAYMENT_AMOUNT = 50_000_000; // 50 mln UZS
@@ -740,6 +741,29 @@ const payWithWallet = async (req, res) => {
 
     // ✅ Hammasi yaxshi — commit
     await t.commit();
+
+    // --- To'lov xabarnomasi Telegram botga ---
+    notifyPayment({
+      user: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        telegramId: tgIdString,
+      },
+      game: game
+        ? {
+            title: game.title,
+            location: game.location,
+            playDate: game.playDate,
+            startTime: game.startTime,
+            endTime: game.endTime,
+          }
+        : null,
+      amount: payAmount,
+      method: "wallet",
+      team: team || "Noma'lum",
+      type: "game",
+    }).catch(() => {});
 
     // --- Bot orqali xabar (tranzaksiyadan tashqarida) ---
     if (req.bot) {
