@@ -524,10 +524,13 @@
 
 
 // controllers/payment.controller.js
-const { User, Game, Transaction, UserGame, sequelize } = require("../models");
-const { v4: uuidv4 } = require("uuid");
+const { User, Game, Transaction, UserGame, PaymeOrder, sequelize } = require("../models");
 const crypto = require("crypto");
+<<<<<<< HEAD
 const { notifyPayment } = require("../utils/paymentNotifier");
+=======
+const uuidv4 = () => crypto.randomUUID();
+>>>>>>> 757d341efebfdb1b5a08275e1affbfabaf18e8a5
 
 // --- XAVFSIZLIK: Ruxsat etilgan maximum to'lov (UZS) ---
 const MAX_PAYMENT_AMOUNT = 50_000_000; // 50 mln UZS
@@ -849,12 +852,20 @@ const getPaymeCheckoutUrl = async (req, res) => {
       return res.status(400).json({ msg: "Minimal amount 1 so'm" });
     }
 
-    // Payme account: telegram_id yuboramiz
-    // Payme callback (CheckPerformTransaction/CreateTransaction) ham shuni tekshirishi kerak:
-    // account.telegram_id bo'yicha User topish.
-    const params = `m=${PAYME_MERCHANT_ID};ac.telegram_id=${encodeURIComponent(
-      String(telegramId)
-    )};ac.game_id=0;ac.team=NA;a=${amountTiyin}`;
+    const orderId = String(Date.now());
+
+    // Orderni bazaga saqlash (CheckPerformTransaction tekshirishi uchun)
+    await PaymeOrder.create({
+      orderId,
+      userId: user.id,
+      telegramId: String(telegramId),
+      gameId: "0",
+      team: "NA",
+      amount: amountTiyin,
+      status: "pending",
+    });
+
+    const params = `m=${PAYME_MERCHANT_ID};ac.order_id=${orderId};ac.telegram_id=${String(telegramId)};ac.game_id=0;ac.team=NA;a=${amountTiyin}`;
 
     const b64 = Buffer.from(params).toString("base64");
     const checkoutUrl = `${PAYME_CHECKOUT_BASE}/${b64}`;
@@ -863,8 +874,7 @@ const getPaymeCheckoutUrl = async (req, res) => {
       checkoutUrl,
       amountSom,
       amountTiyin,
-      // account: { telegram_id: String(telegramId) },
-       account: { telegram_id: String(telegramId), game_id: "0", team: "NA" },
+      account: { telegram_id: String(telegramId), game_id: "0", team: "NA", order_id: orderId },
     });
   } catch (error) {
     console.error("Payme checkout-url error:", error);
@@ -940,14 +950,20 @@ const createGamePaymeCheckout = async (req, res) => {
     // Payme account: telegram_id, game_id, team yuboramiz
     // Payme callback (PerformTransaction) ham shularni tekshiradi
     const safeTeam = team ? String(team).replace(/[^a-zA-Z0-9\s]/g, "").substring(0, 30) : "NA";
+    const orderId = String(Date.now());
 
-    const params = `m=${PAYME_MERCHANT_ID};ac.telegram_id=${encodeURIComponent(
-      String(telegramId)
-    )};ac.game_id=${encodeURIComponent(
-      String(gameId)
-    )};ac.team=${encodeURIComponent(
-      safeTeam
-    )};a=${amountTiyin}`;
+    // Orderni bazaga saqlash
+    await PaymeOrder.create({
+      orderId,
+      userId: user.id,
+      telegramId: String(telegramId),
+      gameId: String(gameId),
+      team: safeTeam,
+      amount: amountTiyin,
+      status: "pending",
+    });
+
+    const params = `m=${PAYME_MERCHANT_ID};ac.order_id=${orderId};ac.telegram_id=${String(telegramId)};ac.game_id=${String(gameId)};ac.team=${safeTeam};a=${amountTiyin}`;
 
     const b64 = Buffer.from(params).toString("base64");
     const checkoutUrl = `${PAYME_CHECKOUT_BASE}/${b64}`;

@@ -1,9 +1,10 @@
 // controllers/payme.controller.js
-const { User, Transaction, PaymeTransaction, sequelize } = require("../models");
+const { User, Transaction, PaymeTransaction, PaymeOrder, sequelize } = require("../models");
 require("dotenv").config();
 const { notifyPayment } = require("../utils/paymentNotifier");
 
-const PAYME_SECRET_KEY = process.env.PAYME_SECRET_KEY; // Paycom "Paycom:<KEY>" Basic Auth password
+const PAYME_SECRET_KEY = process.env.PAYME_SECRET_KEY;
+const PAYME_TEST_KEY = process.env.PAYME_TEST_KEY;
 
 // PAYME xatolik kodlari
 const PaymeError = {
@@ -61,7 +62,11 @@ const PaymeError = {
 const errorResponse = (id, error) => ({
   jsonrpc: "2.0",
   id,
-  error: { code: error.code, message: error.message },
+  error: {
+    code: error.code,
+    message: typeof error.message === "object" ? error.message : { uz: error.message, ru: error.message, en: error.message },
+    data: error.data || null,
+  },
 });
 
 const successResponse = (id, result) => ({
@@ -71,6 +76,7 @@ const successResponse = (id, result) => ({
 });
 
 // --- Basic Auth tekshirish (Paycom:SECRET_KEY) ---
+// "test" yoki "production" qaytaradi, yoki false
 const checkAuth = (req) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return false;
@@ -86,10 +92,15 @@ const checkAuth = (req) => {
     return false;
   }
 
-  const [login, password] = decoded.split(":");
+  const colonIndex = decoded.indexOf(":");
+  const login = decoded.substring(0, colonIndex);
+  const password = decoded.substring(colonIndex + 1);
   if (!login || password === undefined) return false;
 
-  return login === "Paycom" && password === PAYME_SECRET_KEY;
+  if (login !== "Paycom") return false;
+  if (password === process.env.PAYME_SECRET_KEY) return "production";
+  if (password === process.env.PAYME_TEST_KEY) return "test";
+  return false;
 };
 
 // ============================================================
@@ -105,14 +116,29 @@ const CheckPerformTransaction = async (params, id) => {
   try {
     const { account, amount } = params || {};
     const tgId = account?.telegram_id;
+    const orderId = account?.order_id;
 
     if (!tgId) return errorResponse(id, PaymeError.UserNotFound);
 
     const user = await User.findOne({ where: { telegramId: String(tgId) } });
     if (!user) return errorResponse(id, PaymeError.UserNotFound);
 
+    // Order tekshirish - order_id bazada bo'lishi kerak
+    if (!orderId) return errorResponse(id, PaymeError.UserNotFound);
+    const order = await PaymeOrder.findOne({ where: { orderId: String(orderId) } });
+    if (!order) return errorResponse(id, PaymeError.UserNotFound);
+
+    // Account fieldlarini order bilan solishtirish
+    if (order.telegramId !== String(tgId)) return errorResponse(id, PaymeError.UserNotFound);
+    if (order.gameId !== String(account?.game_id || "0")) return errorResponse(id, PaymeError.UserNotFound);
+    if (order.team !== String(account?.team || "NA")) return errorResponse(id, PaymeError.UserNotFound);
+
+    // Summa tekshiruvi
     const amountTiyin = Number(amount);
-    if (!Number.isFinite(amountTiyin) || amountTiyin < 100) {
+    if (!Number.isFinite(amountTiyin) || amountTiyin < 100 || amountTiyin > 100_000_000) {
+      return errorResponse(id, PaymeError.InvalidAmount);
+    }
+    if (order.amount !== amountTiyin) {
       return errorResponse(id, PaymeError.InvalidAmount);
     }
 
@@ -130,6 +156,7 @@ const CreateTransaction = async (params, id) => {
     const { account, amount, time } = params || {};
     const paymeTransactionId = params?.id;
     const tgId = account?.telegram_id;
+    const orderId = account?.order_id;
 
     if (!paymeTransactionId) {
       await t.rollback();
@@ -146,13 +173,36 @@ const CreateTransaction = async (params, id) => {
       return errorResponse(id, PaymeError.UserNotFound);
     }
 
+    // Order tekshirish
+    if (!orderId) {
+      await t.rollback();
+      return errorResponse(id, PaymeError.UserNotFound);
+    }
+    const order = await PaymeOrder.findOne({ where: { orderId: String(orderId) }, transaction: t });
+    if (!order) {
+      await t.rollback();
+      return errorResponse(id, PaymeError.UserNotFound);
+    }
+
+    // Account fieldlarini order bilan solishtirish
+    if (order.telegramId !== String(tgId) || order.gameId !== String(account?.game_id || "0") || order.team !== String(account?.team || "NA")) {
+      await t.rollback();
+      return errorResponse(id, PaymeError.UserNotFound);
+    }
+
     const amountTiyin = Number(amount);
-    if (!Number.isFinite(amountTiyin) || amountTiyin < 100) {
+    if (!Number.isFinite(amountTiyin) || amountTiyin < 100 || amountTiyin > 100_000_000) {
       await t.rollback();
       return errorResponse(id, PaymeError.InvalidAmount);
     }
 
-    // PaymeTransaction oldin bor-yo'qligini tekshiramiz
+    // Order summasi tekshirish
+    if (order.amount !== amountTiyin) {
+      await t.rollback();
+      return errorResponse(id, PaymeError.InvalidAmount);
+    }
+
+    // PaymeTransaction oldin bor-yo'qligini tekshiramiz (qayta chaqiruv bo'lishi mumkin)
     let paymeTx = await PaymeTransaction.findOne({
       where: { paymeTransactionId },
       transaction: t,
@@ -160,7 +210,7 @@ const CreateTransaction = async (params, id) => {
 
     if (paymeTx) {
       await t.rollback();
-      // state=1 bo'lsa shu transactionni qaytaramiz
+      // state=1 bo'lsa shu transactionni qaytaramiz (idempotent)
       if (paymeTx.state === 1) {
         return successResponse(id, {
           create_time: Number(paymeTx.createTime || 0),
@@ -170,6 +220,12 @@ const CreateTransaction = async (params, id) => {
       }
       // boshqa state bo'lsa bajarib bo'lmaydi
       return errorResponse(id, PaymeError.CantDoOperation);
+    }
+
+    // Shu order uchun allaqachon boshqa tranzaksiya bormi tekshirish
+    if (order.status !== "pending") {
+      await t.rollback();
+      return errorResponse(id, PaymeError.UserNotFound);
     }
 
     // Transaction (bizda so'm bilan yuradi)
@@ -203,6 +259,9 @@ const CreateTransaction = async (params, id) => {
       },
       { transaction: t }
     );
+
+    // Order statusini yangilash
+    await order.update({ status: "processing" }, { transaction: t });
 
     await t.commit();
 
@@ -412,13 +471,44 @@ const CancelTransaction = async (params, id) => {
 
     const cancelTime = Date.now();
 
-    // Agar to'lov bajarilgan bo'lsa (state=2) -> rollback balans
+    // Agar to'lov bajarilgan bo'lsa (state=2) -> rollback
     if (paymeTx.state === 2) {
+      const { Game, UserGame } = require("../models");
       const user = await User.findByPk(paymeTx.userId, { transaction: t });
-      if (user) {
-        const amountSom = Number(paymeTx.amount || 0) / 100;
-        // balans yetarliligini tekshiramiz
-        if (Number(user.balance || 0) >= amountSom) {
+      const amountSom = Number(paymeTx.amount || 0) / 100;
+      const account = paymeTx.account || {};
+      const gameId = account.game_id;
+
+      if (gameId && gameId !== "0") {
+        // O'yin to'lovi bekor qilish — UserGame va playersJoined qaytarish
+        const userGameEntry = await UserGame.findOne({
+          where: { userId: paymeTx.userId, gameId },
+          transaction: t,
+        });
+        if (userGameEntry) {
+          await userGameEntry.destroy({ transaction: t });
+        }
+
+        const game = await Game.findByPk(gameId, { transaction: t });
+        if (game && game.playersJoined > 0) {
+          await game.update(
+            { playersJoined: game.playersJoined - 1 },
+            { transaction: t }
+          );
+        }
+
+        // Expense transactionni ham declined qilish
+        await Transaction.update(
+          { status: "declined" },
+          {
+            where: { userId: paymeTx.userId, paymentType: "payme", type: "expense", status: "approved" },
+            transaction: t,
+            limit: 1,
+          }
+        );
+      } else {
+        // Hamyon to'ldirish bekor qilish — balansni kamaytirish
+        if (user && Number(user.balance || 0) >= amountSom) {
           await user.update(
             { balance: Number(user.balance || 0) - amountSom },
             { transaction: t }
@@ -543,13 +633,54 @@ const GetStatement = async (params, id) => {
   }
 };
 
+// 7) ChangePassword
+const ChangePassword = async (params, id, authType) => {
+  try {
+    const { password } = params || {};
+    if (!password) return errorResponse(id, PaymeError.CantDoOperation);
+
+    const fs = require("fs");
+    const envPath = require("path").join(__dirname, "..", ".env");
+    let envContent = fs.readFileSync(envPath, "utf8");
+
+    // Qaysi kalit bilan autentifikatsiya qilingan bo'lsa, shuni o'zgartiramiz
+    const envKey = authType === "test" ? "PAYME_TEST_KEY" : "PAYME_SECRET_KEY";
+    const oldKey = process.env[envKey];
+
+    if (envContent.includes(`${envKey}=`)) {
+      envContent = envContent.replace(
+        new RegExp(`${envKey}=.*`),
+        `${envKey}="${password}"`
+      );
+    } else {
+      envContent += `\n${envKey}="${password}"`;
+    }
+
+    fs.writeFileSync(envPath, envContent);
+
+    // Runtime da ham yangilash
+    process.env[envKey] = password;
+
+    console.log("PAYME PASSWORD CHANGED:", { type: authType, envKey, old: oldKey?.slice(0, 5) + "...", new: password?.slice(0, 5) + "..." });
+
+    return successResponse(id, { success: true });
+  } catch (error) {
+    console.error("ChangePassword error:", error);
+    return errorResponse(id, PaymeError.CantDoOperation);
+  }
+};
+
 // ============================================================
 // MAIN ENDPOINT
 // ============================================================
 const handlePayme = async (req, res) => {
-  if (!checkAuth(req)) {
+  console.log("PAYME REQUEST:", JSON.stringify({ method: req.body?.method, auth: !!req.headers.authorization, body: req.body }));
+  const authType = checkAuth(req);
+  if (!authType) {
+    console.log("PAYME AUTH FAILED");
     return res.json(errorResponse(req.body?.id, PaymeError.InvalidAuthorization));
   }
+  console.log("PAYME AUTH OK, type:", authType);
 
   const { method, params, id } = req.body || {};
 
@@ -573,6 +704,9 @@ const handlePayme = async (req, res) => {
       break;
     case "GetStatement":
       result = await GetStatement(params, id);
+      break;
+    case "ChangePassword":
+      result = await ChangePassword(params, id, authType);
       break;
     default:
       result = errorResponse(id, {
