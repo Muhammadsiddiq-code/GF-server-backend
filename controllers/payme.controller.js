@@ -1,5 +1,10 @@
 // controllers/payme.controller.js
+<<<<<<< HEAD
 const { User, Transaction, PaymeTransaction, PaymeOrder, sequelize } = require("../models");
+=======
+// test deploy trigger
+const { User, Transaction, PaymeTransaction, sequelize } = require("../models");
+>>>>>>> 7e88bce5dea5c397cfb6e8600ae94e71767e4ab9
 require("dotenv").config();
 const { notifyPayment } = require("../utils/paymentNotifier");
 
@@ -114,6 +119,7 @@ const checkAuth = (req) => {
 // 1) CheckPerformTransaction
 const CheckPerformTransaction = async (params, id) => {
   try {
+    console.log("CheckPerformTransaction params:", params);
     const { account, amount } = params || {};
     const tgId = account?.telegram_id;
     const orderId = account?.order_id;
@@ -321,10 +327,17 @@ const PerformTransaction = async (params, id) => {
     const account = paymeTx.account || {};
 
     // =====================================================
+<<<<<<< HEAD
     // GAME PAYMENT: Agar account.game_id mavjud bo'lsa  (0 = topup)
     // o'yinga to'g'ridan-to'g'ri to'lov qilamiz
     // =====================================================
    if (account.game_id && String(account.game_id) !== "0"){
+=======
+    // GAME PAYMENT: Agar account.game_id mavjud bo'lsa (0 = topup)
+    // o'yinga to'g'ridan-to'g'ri to'lov qilamiz
+    // =====================================================
+    if (account.game_id && String(account.game_id) !== "0") {
+>>>>>>> 7e88bce5dea5c397cfb6e8600ae94e71767e4ab9
       const { Game, UserGame } = require("../models");
 
       const gameId = Number(account.game_id);
@@ -674,10 +687,15 @@ const ChangePassword = async (params, id, authType) => {
 // MAIN ENDPOINT
 // ============================================================
 const handlePayme = async (req, res) => {
+<<<<<<< HEAD
   console.log("PAYME REQUEST:", JSON.stringify({ method: req.body?.method, auth: !!req.headers.authorization, body: req.body }));
   const authType = checkAuth(req);
   if (!authType) {
     console.log("PAYME AUTH FAILED");
+=======
+  console.log("Received Payme request:", JSON.stringify(req.body));
+  if (!checkAuth(req)) {
+>>>>>>> 7e88bce5dea5c397cfb6e8600ae94e71767e4ab9
     return res.json(errorResponse(req.body?.id, PaymeError.InvalidAuthorization));
   }
   console.log("PAYME AUTH OK, type:", authType);
